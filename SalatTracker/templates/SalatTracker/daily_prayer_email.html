@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Daily Prayer Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Daily Prayer Times</h1>
+    <p>Assalamu Alaikum, {{ user.username }}!</p>
+    <p>Here are the prayer times for {{ weekday_name }}, {{ prayer_date }}:</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Prayer Name</th>
+                <th>Prayer Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prayer_time in prayer_times %}
+            <tr>
+                <td>{{ prayer_time.prayer_name }}</td>
+                <td>{{ prayer_time.prayer_time|time:"g:i A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p>NB: You will receive an sms some minutes before each salah time, and also an Adhan phone call at the exact salah time.</p>
+</body>
+</html>

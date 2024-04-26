@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth import get_user_model
 import pytz
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from phonenumbers import parse, is_valid_number, format_number, PhoneNumberFormat
 
 
@@ -15,16 +15,13 @@ timezone_choices = [(tz, tz) for tz in all_timezones]
 # user = get_user_model()
 
 class CustomUser(AbstractUser):
-    # Additional fields
     sex = models.CharField(max_length=10, blank=True)
     address = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100, default="ABUJA")
     country = models.CharField(max_length=100, default="NIGERIA")
     timezone = models.CharField(max_length=100, default="Africa/Lagos")
     phone_number = models.CharField(max_length=20, null=True, blank=True)
-    
-    # Add any other fields you need
-    
+        
     def __str__(self):
         return self.username
     
@@ -34,22 +31,19 @@ class CustomUser(AbstractUser):
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return midnight
     
-    # def save(self, *args, **kwargs):
-    #     # Normalize and validate the phone number
-    #     if self.phone_number:
-    #         parsed_number = parse(self.phone_number, None)
-    #         if is_valid_number(parsed_number):
-    #             # Format the phone number in E.164 format for international calls
-    #             formatted_number = format_number(parsed_number, PhoneNumberFormat.E164)
-    #             self.phone_number = formatted_number
-    #     super().save(*args, **kwargs)
-    
 
 class UserPreferences(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    address = models.CharField(max_length=255, null=True, blank=True)
-    city = models.CharField(max_length=255, default="ABUJA")
-    country = models.CharField(max_length=255, default="NIGERIA")
+    # Daily Prayer Message at Start of Day
+    daily_prayer_message_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='email')
+
+    # Notification Before Prayer Time
+    notification_before_prayer = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='sms')
+    notification_time_before_prayer = models.IntegerField(default=15, help_text="Number of minutes before prayer time to send notification")
+
+    # Adhan Phone Call at Prayer Time
+    adhan_call_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS'), ('call', 'Phone Call')], default='call')
+
     NOTIFICATION_CHOICES = [
         ('email', 'Email'),
         ('call', 'Call'),
@@ -62,11 +56,11 @@ class UserPreferences(models.Model):
         null=True,
     )
     # notification_time = models.TimeField()
-    utc_time_for_1159 = models.TimeField()
+    utc_time_for_1159 = models.TimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         # Calculate and store UTC time for 11:59 AM in the user's timezone
-        user_timezone = pytz.timezone(self.location)
+        user_timezone = pytz.timezone(self.user.timezone)
         local_time_1159 = datetime.combine(datetime.today(), time(11, 59))
         utc_time_1159 = user_timezone.localize(local_time_1159).astimezone(pytz.utc).time()
         self.utc_time_for_1159 = utc_time_1159
