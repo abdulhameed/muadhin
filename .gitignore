@@ -346,7 +346,8 @@ manage.py
 .venv
 venv
 /venv/
-
+file_cache/*
+!file_cache/.gitkeep
 
 db.sqlite3
 media/

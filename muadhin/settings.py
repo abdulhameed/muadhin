@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 
 load_dotenv()
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
     'users',
     'SalatTracker',
     'rest_framework',
@@ -128,6 +130,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.path.join(BASE_DIR, 'file_cache/'),  # Use os.path.join to create an absolute path to the desired cache directory path
+    }
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -139,6 +148,16 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Use the same URL as CELERY
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_BEAT_SCHEDULE = {
+    # 'schedule_midnight_checks': {
+    #     'task': 'SalatTracker.tasks.schedule_midnight_checks',
+    #     'schedule': crontab(minute='*/2'),  # Run every 2 minutes
+    # },
+    'check_and_schedule_daily_tasks': {
+        'task': 'users.tasks.check_and_schedule_daily_tasks',
+        'schedule': crontab(minute='*/2'),  # Run every 30 minutes
+    },
+}
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -170,3 +189,8 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+
+# MAILGUN SETTINGS
+EMAIL_BACKEND = 'django_mailgun_mime.backends.MailgunMIMEBackend'
+MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
+MAILGUN_DOMAIN_NAME = os.getenv('MAILGUN_DOMAIN_NAME')

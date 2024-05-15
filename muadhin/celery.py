@@ -3,6 +3,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 # from muadhin.celery_fix import getargspec
+# from SalatTracker.tasks import schedule_midnight_checks
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'muadhin.settings')
@@ -12,9 +13,14 @@ app = Celery('muadhin')
 
 
 app.conf.beat_schedule = {
-    'schedule_midnight_checks': {
-        'task': 'schedule_midnight_checks',
-        'schedule': crontab(minute=0, hour=23),  # Run every day at 11:00 PM UTC
+    # 'schedule_midnight_checks': {
+    #     'task': 'SalatTracker.tasks.schedule_midnight_checks',
+    #     'schedule': crontab(minute='*/2'),  # Run every 2 minutes
+    # },
+
+    'check_and_schedule_daily_tasks': {
+        'task': 'users.tasks.check_and_schedule_daily_tasks',
+        'schedule': crontab(minute='*/2'),  # Run every 30 minutes
     },
 }
 
@@ -27,3 +33,12 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
+
+# BEAT_SCHEDULE = {
+#     'setup_periodic_tasks': {
+#         'task': 'users.tasks.setup_periodic_tasks',
+#         'schedule': crontab(minute='*/30'),  # Run every 30 minutes
+#         'args': (None,),  # Pass None as the 'sender' argument
+#     },
+# }

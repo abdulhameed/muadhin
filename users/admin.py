@@ -5,7 +5,7 @@ from .models import CustomUser, UserPreferences, Location, PrayerMethod, PrayerO
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'sex', 'city', 'country', 'timezone', 'phone_number')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'sex', 'city', 'country', 'timezone', 'phone_number', 'last_scheduled_time', 'midnight_utc')
 
 @admin.register(UserPreferences)
 class UserPreferencesAdmin(admin.ModelAdmin):

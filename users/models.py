@@ -21,15 +21,25 @@ class CustomUser(AbstractUser):
     country = models.CharField(max_length=100, default="NIGERIA")
     timezone = models.CharField(max_length=100, default="Africa/Lagos")
     phone_number = models.CharField(max_length=20, null=True, blank=True)
+    last_scheduled_time = models.DateTimeField(null=True, blank=True)
+    midnight_utc = models.TimeField(null=True, blank=True)
         
     def __str__(self):
         return self.username
-    
+
+    def save(self, *args, **kwargs):
+        user_timezone = pytz.timezone(self.timezone)
+        now = user_timezone.localize(datetime.now())
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        self.midnight_utc = midnight.astimezone(pytz.utc).time()
+        super().save(*args, **kwargs)
+
     @property
     def next_midnight(self):
-        now = datetime.now(pytz.timezone(self.timezone))
+        user_timezone = pytz.timezone(self.timezone)
+        now = user_timezone.localize(datetime.now())
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        return midnight
+        return midnight - timedelta(minutes=5)
     
 
 class UserPreferences(models.Model):

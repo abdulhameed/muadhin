@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 
-from SalatTracker.tasks import fetch_and_save_prayer_times
+from SalatTracker.tasks import fetch_and_save_daily_prayer_times
 from .models import PrayerTime
 from .serializers import PrayerTimeSerializer, DailyPrayerSerializer
 from rest_framework.views import APIView
@@ -47,5 +47,5 @@ class PrayerTimeFetch(APIView):
         user = CustomUser.objects.get(pk=user_id)
         prayer_method = PrayerMethod.objects.get(user=user)
         date = request.query_params.get('date', datetime.now().strftime('%d-%m-%Y'))
-        fetch_and_save_prayer_times(user_id, date)
+        fetch_and_save_daily_prayer_times(user_id, date)
         return Response("Prayer times are being fetched and saved.")
