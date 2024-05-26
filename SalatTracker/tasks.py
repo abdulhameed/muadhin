@@ -161,13 +161,13 @@ def send_daily_prayer_message(user_id):
         for prayer_time in prayer_times:
             message += f"{prayer_time.prayer_name}: {prayer_time.prayer_time.strftime('%I:%M %p')}\n"
 
-        if user_preference.daily_prayer_message_method == 'email':
+        if user_preference.daily_prayer_summary_message_method == 'email':
             # Send the daily prayer email
             email_daily_prayerTime(user_id, daily_prayer, prayer_times)
             # user.email_user('Daily Prayer Times', message)
             daily_prayer.is_email_notified = True
             daily_prayer.save()
-        elif user_preference.daily_prayer_message_method == 'sms':
+        elif user_preference.daily_prayer_summary_message_method == 'sms':
             send_sms(user_id.phone_number, message)
             daily_prayer.is_sms_notified = True  # Change this to is_sms_notified
             daily_prayer.save()
@@ -199,7 +199,7 @@ def email_daily_prayerTime(user, daily_prayer, prayer_times):
     email.send_email(
         subject=email_subject,
         body=email_body,
-        from_email='your_email@example.com',
+        from_email='your_email@imaan-connect.com',
         to_emails=[user.email],
         html_message=email_body
     )
@@ -223,7 +223,7 @@ def send_pre_prayer_notification_email(email, prayer_name, prayer_time):
     email.send_email(
         subject=email_subject,
         body=text_content,
-        from_email='your_email@example.com',
+        from_email='your_email@imaan-connect.com',
         to_emails=[email],
         html_message=html_content
     )

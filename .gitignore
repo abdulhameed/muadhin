@@ -310,6 +310,9 @@ pyvenv.cfg
 .venv-his/
 env/
 venv/
+/venv/
+*/venv/
+*/venv/*
 ENV/
 virtualenv/
 env.bak/

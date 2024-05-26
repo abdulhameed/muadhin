@@ -45,13 +45,15 @@ class CustomUser(AbstractUser):
 class UserPreferences(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     # Daily Prayer Message at Start of Day
-    daily_prayer_message_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='email')
-
+    daily_prayer_summary_enabled = models.BooleanField(default=True)
+    daily_prayer_summary_message_method = models.CharField(max_length=10, blank=True, null=True, choices=[('email', 'Email'), ('sms', 'SMS')], default='email')
     # Notification Before Prayer Time
-    notification_before_prayer = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='sms')
-    notification_time_before_prayer = models.IntegerField(default=15, help_text="Number of minutes before prayer time to send notification")
+    notification_before_prayer_enabled = models.BooleanField(default=True)
+    notification_before_prayer = models.CharField(max_length=10, blank=True, null=True, choices=[('email', 'Email'), ('sms', 'SMS')], default='sms')
+    notification_time_before_prayer = models.IntegerField(default=15, blank=True, null=True, help_text="Number of minutes before prayer time to send notification")
 
     # Adhan Phone Call at Prayer Time
+    adhan_call_enabled = models.BooleanField(default=True)
     adhan_call_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS'), ('call', 'Phone Call')], default='call')
 
     NOTIFICATION_CHOICES = [

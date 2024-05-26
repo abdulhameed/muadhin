@@ -1,8 +1,9 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from .models import CustomUser, UserPreferences, PrayerMethod, PrayerOffset
-from .serializers import UserPreferencesSerializer, PrayerMethodSerializer, PrayerOffsetSerializer, CustomUserSerializer
+from .serializers import UserPreferencesSerializer, PrayerMethodSerializer, PrayerOffsetSerializer, CustomUserSerializer, PrayerMethodGenSerializer
 from rest_framework.response import Response
 from rest_framework import status
+from .permissions import IsOwnerOrReadOnly
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -20,11 +21,33 @@ class UserViewSet(viewsets.ModelViewSet):
 class UserPreferencesViewSet(viewsets.ModelViewSet):
     queryset = UserPreferences.objects.all()
     serializer_class = UserPreferencesSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    # def get_permissions(self):
+    #     """
+    #     Instantiates and returns the list of permissions that this view requires.
+    #     """
+    #     if self.action in ['update', 'partial_update', 'destroy']:
+    #         permission_classes = [permissions.IsAuthenticated]
+    #     else:
+    #         permission_classes = [permissions.AllowAny]
+    #     return [permission() for permission in permission_classes]
 
 
-class PrayerMethodViewSet(viewsets.ModelViewSet):
+class PrayerMethodGenSerializer(viewsets.ModelViewSet):
     queryset = PrayerMethod.objects.all()
-    serializer_class = PrayerMethodSerializer
+    serializer_class = PrayerMethodGenSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    
+    # def get_permissions(self):
+    #     """
+    #     Instantiates and returns the list of permissions that this view requires.
+    #     """
+    #     if self.action in ['update', 'partial_update', 'destroy']:
+    #         permission_classes = [permissions.IsAuthenticated]
+    #     else:
+    #         permission_classes = [permissions.AllowAny]
+    #     return [permission() for permission in permission_classes]
 
 class PrayerOffsetViewSet(viewsets.ModelViewSet):
     queryset = PrayerOffset.objects.all()
