@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PrayerTimeViewSet, PrayerTimeFetch, DailyPrayerViewSet
+from .api_views import PrayerTimeViewSet, PrayerTimeFetch, DailyPrayerViewSet
 
 router = DefaultRouter()
 router.register(r'prayer-times', PrayerTimeViewSet)
