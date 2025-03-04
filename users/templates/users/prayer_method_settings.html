@@ -1,0 +1,17 @@
+{% extends "users/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Step 3: Prayer Method</h2>
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="{{ form.sn.id_for_label }}" class="form-label">Prayer Calculation Method:</label>
+            {{ form.as_p }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Finish</button>
+    </form>
+</div>
+{% endblock %}

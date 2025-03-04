@@ -1,6 +1,6 @@
 import requests
 from datetime import datetime
-from SalatTracker.tasks import schedule_notifications_for_day, schedule_phone_calls_for_day, send_daily_prayer_message
+from SalatTracker.tasks import schedule_notifications_for_day, schedule_phone_calls_for_day, send_daily_prayer_summary_message
 from users.models import CustomUser, PrayerMethod
 from .models import PrayerTime
 from django.utils import timezone
@@ -68,7 +68,7 @@ def fetch_and_save_prayer_times(user_id, date):
                 prayer_time_obj.save()
                 
         # Call the function to send the daily prayer message
-        send_daily_prayer_message.delay(user.id)
+        send_daily_prayer_summary_message.delay(user.id)
         schedule_notifications_for_day.delay(user_id, gregorian_date_formatted)
         schedule_phone_calls_for_day.delay(user_id, gregorian_date_formatted)
 

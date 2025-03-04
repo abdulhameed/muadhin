@@ -107,7 +107,7 @@ def fetch_and_save_daily_prayer_times(user_id, date):
                 prayer_time_obj.save()
                 
         # Call the function to send the daily prayer message
-        send_daily_prayer_message.delay(user.id)
+        send_daily_prayer_summary_message.delay(user.id)
         schedule_notifications_for_day.delay(user_id, gregorian_date_formatted)
         schedule_phone_calls_for_day.delay(user_id, gregorian_date_formatted)
 
@@ -135,7 +135,7 @@ def send_sms(phone_number, message):
 
 
 @shared_task
-def send_daily_prayer_message(user_id):
+def send_daily_prayer_summary_message(user_id):
     """
     Function to send the daily prayer message to the user.
     """
@@ -241,7 +241,7 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
     # Schedule notifications for each prayer time
     for prayer_time_obj in daily_prayer.prayertime_set.all():
         prayer_datetime = datetime.combine(current_date, prayer_time_obj.prayer_time)
-        notification_time_delta = timezone.timedelta(minutes=user_preferences.notification_time_before_prayer)
+        notification_time_delta = timezone.timedelta(minutes=user_preferences.pre_prayer_reminder_time)
         notification_time = (prayer_datetime - notification_time_delta).time()
 
         send_pre_adhan_notification.apply_async(
@@ -255,7 +255,7 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
     user = User.objects.get(pk=user_id)
     email = user.email
     user_preferences = UserPreferences.objects.get(user=user)
-    notification_method = user_preferences.notification_before_prayer
+    notification_method = user_preferences.pre_prayer_reminder_method
 
     if notification_method == 'sms':
         send_sms(user.phone_number, f'Prayer time ({prayer_name}) is approaching.')

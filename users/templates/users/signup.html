@@ -1,0 +1,26 @@
+{% extends 'users/base.html' %}
+
+{% block content %}
+<h2>Sign Up</h2>
+<form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {% if field.name == 'timezone' %}
+                <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control">
+                    {% for value, label in field.field.choices %}
+                        <option value="{{ value }}" {% if value == field.value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                {{ field }}
+            {% endif %}
+            {% if field.errors %}
+                <small class="error">{{ field.errors|striptags }}</small>
+            {% endif %}
+        </div>
+    {% endfor %}
+    <button type="submit">Sign Up</button>
+</form>
+{% endblock %}

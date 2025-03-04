@@ -1,0 +1,35 @@
+{% extends 'users/new_base.html' %}
+
+{% block content %}
+<h1 class="mb-4">Prayer Times for Today</h1>
+
+<div class="prayer-times mb-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Prayer</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prayer, time in prayer_times.items %}
+            <tr>
+                <td>{{ prayer }}</td>
+                <td>{{ time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="quran-verse card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Verse of the Day</h5>
+        <p class="card-text arabic-font">{{ verse_arabic }}</p>
+        <p class="card-text">{{ verse_english }}</p>
+    </div>
+</div>
+
+<!-- Add more dashboard components here -->
+
+{% endblock %}

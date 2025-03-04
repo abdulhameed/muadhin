@@ -1,0 +1,12 @@
+{% extends "users/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="text-center">
+        <h1>Setup Completed!</h1>
+        <p class="lead">Thank you for completing your prayer preferences setup.</p>
+        <p>Your account is now fully configured.</p>
+        <a href="{% url 'dashboard' %}" class="btn btn-primary mt-3">Go to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

@@ -17,13 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework import permissions
+from rest_framework.permissions import AllowAny
+from rest_framework.documentation import include_docs_urls
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+from users.views import homepage
 
 router = DefaultRouter()
 
@@ -37,10 +40,11 @@ schema_view = get_schema_view(
         license=openapi.License(name="Your License"),
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[AllowAny],
 )
 
 urlpatterns = [
+    path('home/', homepage, name='home'),
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path('swag/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
@@ -49,4 +53,5 @@ urlpatterns = [
     path('api/', include('users.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('my_docs/', include_docs_urls(title="API Documentation")),
 ]

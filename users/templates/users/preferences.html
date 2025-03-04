@@ -1,0 +1,58 @@
+{% extends 'users/base.html' %}
+
+{% block title %}User Preferences{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">User Preferences</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="{{ form.subscription_tier.id_for_label }}" class="form-label">Subscription Tier</label>
+        {{ form.subscription_tier }}
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.daily_summary_enabled.id_for_label }}" class="form-check-label">
+            {{ form.daily_summary_enabled }} Enable Daily Summary
+        </label>
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.daily_summary_method.id_for_label }}" class="form-label">Daily Summary Method</label>
+        {{ form.daily_summary_method }}
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.pre_prayer_reminder_enabled.id_for_label }}" class="form-check-label">
+            {{ form.pre_prayer_reminder_enabled }} Enable Pre-Prayer Reminders
+        </label>
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.pre_prayer_reminder_method.id_for_label }}" class="form-label">Pre-Prayer Reminder Method</label>
+        {{ form.pre_prayer_reminder_method }}
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.pre_prayer_reminder_time.id_for_label }}" class="form-label">Pre-Prayer Reminder Time (minutes)</label>
+        {{ form.pre_prayer_reminder_time }}
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.adhan_call_enabled.id_for_label }}" class="form-check-label">
+            {{ form.adhan_call_enabled }} Enable Adhan Call
+        </label>
+    </div>
+    <h2 class="mt-4 mb-3">Individual Prayer Settings</h2>
+    {% for prayer in form.PRAYER_TIMES %}
+        <div class="mb-3">
+            <h3>{{ prayer.1 }}</h3>
+            <div class="form-check">
+                <label for="{{ form|add:prayer.0|add:'_reminder_enabled.id_for_label' }}" class="form-check-label">
+                    {{ form|add:prayer.0|add:'_reminder_enabled' }} Enable Reminder
+                </label>
+            </div>
+            <div class="form-check">
+                <label for="{{ form|add:prayer.0|add:'_adhan_call_enabled.id_for_label' }}" class="form-check-label">
+                    {{ form|add:prayer.0|add:'_adhan_call_enabled' }} Enable Adhan Call
+                </label>
+            </div>
+        </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Save Preferences</button>
+</form>
+{% endblock %}

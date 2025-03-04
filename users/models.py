@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth import get_user_model
 import pytz
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from phonenumbers import parse, is_valid_number, format_number, PhoneNumberFormat
 
 
@@ -23,6 +23,7 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20, null=True, blank=True)
     last_scheduled_time = models.DateTimeField(null=True, blank=True)
     midnight_utc = models.TimeField(null=True, blank=True)
+    setup_completed = models.BooleanField(default=False)
         
     def __str__(self):
         return self.username
@@ -51,48 +52,94 @@ class AuthToken(models.Model):
         return self.token
     
 
+class SubscriptionTier(models.Model):
+    name = models.CharField(max_length=50)
+    description = models.TextField()
+    
+    def __str__(self):
+        return self.name
+    
+
 class UserPreferences(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    # Daily Prayer Message at Start of Day
-    # daily_prayer_message_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='email')
-    daily_prayer_summary_enabled = models.BooleanField(default=True)
-    daily_prayer_summary_message_method = models.CharField(max_length=10, blank=True, null=True, choices=[('email', 'Email'), ('sms', 'SMS')], default='email')
-
-    # Notification Before Prayer Time
-    # notification_before_prayer = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], default='sms')
-    # notification_time_before_prayer = models.IntegerField(default=15, help_text="Number of minutes before prayer time to send notification")
-    notification_before_prayer_enabled = models.BooleanField(default=True)
-    notification_before_prayer = models.CharField(max_length=10, blank=True, null=True, choices=[('email', 'Email'), ('sms', 'SMS')], default='sms')
-    notification_time_before_prayer = models.IntegerField(default=15, blank=True, null=True, help_text="Number of minutes before prayer time to send notification")
-
-    # Adhan Phone Call at Prayer Time
-    adhan_call_enabled = models.BooleanField(default=True)
-    adhan_call_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS'), ('call', 'Phone Call')], default='call')
-
     NOTIFICATION_CHOICES = [
         ('email', 'Email'),
         ('call', 'Call'),
         ('sms', 'SMS'),
+        ('whatsapp', 'WhatsApp'),
     ]
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    subscription_tier = models.ForeignKey(SubscriptionTier, on_delete=models.SET_NULL, null=True)
+    # Daily Prayer Summary Message at Start of Day
+    daily_prayer_summary_enabled = models.BooleanField(default=True)
+    daily_prayer_summary_message_method = models.CharField(
+        max_length=10, 
+        blank=True,
+        null=True, 
+        choices=NOTIFICATION_CHOICES, 
+        default='email'
+    )
+
+    # Notification Before Prayer Time
+    pre_prayer_reminder_enabled = models.BooleanField(default=True)
+    pre_prayer_reminder_method = models.CharField(
+        max_length=10, 
+        blank=True,
+        null=True,
+        choices=NOTIFICATION_CHOICES, 
+        default='whatsapp'
+    )
+    pre_prayer_reminder_time = models.IntegerField(
+        default=15, 
+        help_text="Minutes before prayer time to send notification"
+    )
+
+    # Adhan Phone Call at Prayer Time
+    adhan_call_enabled = models.BooleanField(default=True)
+    adhan_call_method = models.CharField(
+        max_length=10, 
+        choices=NOTIFICATION_CHOICES, 
+        default='call'
+    )
+
     notification_methods = models.CharField(
         max_length=10,
         choices=NOTIFICATION_CHOICES,
         blank=True,
         null=True,
     )
-    # notification_time = models.TimeField()
-    utc_time_for_1159 = models.TimeField(null=True, blank=True)
+    # Individual prayer settings
+    fajr_reminder_enabled = models.BooleanField(default=True)
+    zuhr_reminder_enabled = models.BooleanField(default=True)
+    asr_reminder_enabled = models.BooleanField(default=True)
+    maghrib_reminder_enabled = models.BooleanField(default=True)
+    isha_reminder_enabled = models.BooleanField(default=True)
 
-    def save(self, *args, **kwargs):
-        # Calculate and store UTC time for 11:59 AM in the user's timezone
-        user_timezone = pytz.timezone(self.user.timezone)
-        local_time_1159 = datetime.combine(datetime.today(), time(11, 59))
-        utc_time_1159 = user_timezone.localize(local_time_1159).astimezone(pytz.utc).time()
-        self.utc_time_for_1159 = utc_time_1159
-        super().save(*args, **kwargs)
+    fajr_adhan_call_enabled = models.BooleanField(default=True)
+    zuhr_adhan_call_enabled = models.BooleanField(default=True)
+    asr_adhan_call_enabled = models.BooleanField(default=True)
+    maghrib_adhan_call_enabled = models.BooleanField(default=True)
+    isha_adhan_call_enabled = models.BooleanField(default=True)
+
+    is_completed = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.user.username
+        return f"{self.user.username}'s preferences"
+
+    def save(self, *args, **kwargs):
+        if self.subscription_tier.name == "Base Plan":
+            self.daily_summary_enabled = True
+            self.pre_prayer_reminder_enabled = False
+            self.adhan_call_enabled = False
+        elif self.subscription_tier.name == "Enhanced Plan":
+            self.daily_summary_enabled = True
+            self.pre_prayer_reminder_enabled = True
+            self.adhan_call_enabled = False
+            self.pre_prayer_reminder_method = 'whatsapp'
+        elif self.subscription_tier.name == "Premium Plan":
+            self.daily_summary_enabled = True
+            self.pre_prayer_reminder_enabled = True
+            self.adhan_call_enabled = True
+        super().save(*args, **kwargs)
 
 
 class Location(models.Model):
@@ -100,6 +147,7 @@ class Location(models.Model):
     latitude = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     timezone = models.CharField(max_length=50, null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
     
 
 class PrayerMethod(models.Model):
@@ -124,6 +172,7 @@ class PrayerMethod(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     sn = models.IntegerField(choices=METHOD_CHOICES, default=1)
     name = models.CharField(max_length=50, default='Muslim World League')
+    is_completed = models.BooleanField(default=False)
 
     @property
     def method_name(self):
@@ -144,3 +193,28 @@ class PrayerOffset(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class Discount(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    amount = models.DecimalField(max_digits=5, decimal_places=2)  # Percentage discount
+    is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        return self.is_active and (self.expires_at is None or self.expires_at > timezone.now())
+    
+
+class Subscription(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    plan = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    discount = models.ForeignKey(Discount, null=True, blank=True, on_delete=models.SET_NULL)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def get_discounted_amount(self):
+        if self.discount and self.discount.is_valid():
+            return self.amount * (1 - self.discount.amount / 100)
+        return self.amount

@@ -1,0 +1,15 @@
+{% extends 'user/base.html' %}
+
+{% block title %}Upgrade Subscription{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Upgrade Subscription</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="{{ form.new_tier.id_for_label }}" class="form-label">Choose a new subscription tier:</label>
+        {{ form.new_tier }}
+    </div>
+    <button type="submit" class="btn btn-primary">Upgrade Subscription</button>
+</form>
+{% endblock %}

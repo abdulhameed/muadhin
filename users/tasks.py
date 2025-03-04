@@ -2,7 +2,7 @@ from celery import Celery, shared_task
 from celery.schedules import crontab
 # from .models import User  # Import your user profile model
 from SalatTracker.models import DailyPrayer, PrayerTime
-from SalatTracker.tasks import fetch_and_save_daily_prayer_times, schedule_notifications_for_day, schedule_phone_calls_for_day, send_daily_prayer_message
+from SalatTracker.tasks import fetch_and_save_daily_prayer_times, schedule_notifications_for_day, schedule_phone_calls_for_day, send_daily_prayer_summary_message
 from django.contrib.auth import get_user_model
 import pytz
 from datetime import datetime, timedelta
@@ -10,8 +10,8 @@ from django.core.cache import cache
 from rest_framework.response import Response
 import requests
 from django.utils import timezone
-
-from users.models import PrayerMethod
+from django.core.exceptions import ObjectDoesNotExist
+from users.models import PrayerMethod, UserPreferences
 
 
 User = get_user_model()
@@ -21,20 +21,43 @@ app = Celery('users')
 
 @shared_task
 def check_and_schedule_daily_tasks():
-    user_profiles = User.objects.all()
+    users = User.objects.all()
     now = timezone.now()  # Get the current time in UTC
 
-    for user_profile in user_profiles:
-        user_midnight_utc = datetime.combine(now.date(), user_profile.midnight_utc, tzinfo=pytz.utc)
+    for user in users:
+        try:
+            user_preferences = UserPreferences.objects.get(user=user)
+        except ObjectDoesNotExist:
+            continue  # Skip users without preferences
+
+        user_midnight_utc = datetime.combine(now.date(), user.midnight_utc, tzinfo=pytz.utc)
         next_hour_utc = now + timedelta(hours=1)
         if (
             user_midnight_utc <= next_hour_utc
-            or (not user_profile.last_scheduled_time or now - user_profile.last_scheduled_time > timedelta(hours=24))
+            or (not user.last_scheduled_time or now - user.last_scheduled_time > timedelta(hours=24))
         ):
             next_date = now.date() + timedelta(days=1)
-            fetch_and_save_daily_prayer_times.delay(user_profile.id, next_date)
-            user_profile.last_scheduled_time = now
-            user_profile.save()
+            fetch_and_save_daily_prayer_times.delay(user.id, next_date)
+            user.last_scheduled_time = now
+            user.save()
+
+
+# @shared_task
+# def check_and_schedule_daily_tasks():
+#     user_profiles = User.objects.all()
+#     now = timezone.now()  # Get the current time in UTC
+
+#     for user_profile in user_profiles:
+#         user_midnight_utc = datetime.combine(now.date(), user_profile.midnight_utc, tzinfo=pytz.utc)
+#         next_hour_utc = now + timedelta(hours=1)
+#         if (
+#             user_midnight_utc <= next_hour_utc
+#             or (not user_profile.last_scheduled_time or now - user_profile.last_scheduled_time > timedelta(hours=24))
+#         ):
+#             next_date = now.date() + timedelta(days=1)
+#             fetch_and_save_daily_prayer_times.delay(user_profile.id, next_date)
+#             user_profile.last_scheduled_time = now
+#             user_profile.save()
 
 
 # @shared_task
@@ -119,7 +142,7 @@ def fetch_and_save_daily_prayer_times(user_id, date):
                 prayer_time_obj.save()
                 
         # Call the function to send the daily prayer message
-        send_daily_prayer_message.delay(user.id)
+        send_daily_prayer_summary_message.delay(user.id)
         schedule_notifications_for_day.delay(user_id, gregorian_date_formatted)
         schedule_phone_calls_for_day.delay(user_id, gregorian_date_formatted)
 

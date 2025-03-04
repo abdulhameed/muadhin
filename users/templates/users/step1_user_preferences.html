@@ -1,0 +1,52 @@
+{% extends "users/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Step 1: User Preferences</h2>
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="{{ form.daily_prayer_summary_enabled.id_for_label }}" class="form-label">Enable Daily Prayer Summary:</label>
+            {{ form.daily_prayer_summary_enabled }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.daily_prayer_summary_message_method.id_for_label }}" class="form-label">Daily Prayer Summary Method:</label>
+            {{ form.daily_prayer_summary_message_method }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.notification_before_prayer_enabled.id_for_label }}" class="form-label">Enable Notification Before Prayer:</label>
+            {{ form.notification_before_prayer_enabled }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.notification_before_prayer.id_for_label }}" class="form-label">Notification Method:</label>
+            {{ form.notification_before_prayer }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.notification_time_before_prayer.id_for_label }}" class="form-label">Notification Time Before Prayer (minutes):</label>
+            {{ form.notification_time_before_prayer }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.adhan_call_enabled.id_for_label }}" class="form-label">Enable Adhan Call:</label>
+            {{ form.adhan_call_enabled }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.adhan_call_method.id_for_label }}" class="form-label">Adhan Call Method:</label>
+            {{ form.adhan_call_method }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.notification_methods.id_for_label }}" class="form-label">Notification Methods:</label>
+            {{ form.notification_methods }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Next</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,969 @@
+{
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0",
+    "generated_at": "2025-02-02T19:04:14.263589"
+  },
+  "endpoints": [
+    {
+      "path": "home/",
+      "name": "home",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/",
+      "name": "index",
+      "method": "GET",
+      "description": "Display the main admin index page, which lists all of the installed\n        apps that have been registered in this site."
+    },
+    {
+      "path": "admin/login/",
+      "name": "login",
+      "method": "GET",
+      "description": "Display the login form for the given HttpRequest."
+    },
+    {
+      "path": "admin/logout/",
+      "name": "logout",
+      "method": "GET",
+      "description": "Log out the user for the given HttpRequest.\n\n        This should *not* assume the user is already logged in."
+    },
+    {
+      "path": "admin/password_change/",
+      "name": "password_change",
+      "method": "GET",
+      "description": "Handle the \"change password\" task -- both form display and validation."
+    },
+    {
+      "path": "admin/password_change/done/",
+      "name": "password_change_done",
+      "method": "GET",
+      "description": "Display the \"success\" page after a password change."
+    },
+    {
+      "path": "admin/autocomplete/",
+      "name": "autocomplete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/jsi18n/",
+      "name": "jsi18n",
+      "method": "GET",
+      "description": "Display the i18n JavaScript that the Django admin requires.\n\n        `extra_context` is unused but present for consistency with the other\n        admin views."
+    },
+    {
+      "path": "admin/r/<int:content_type_id>/<path:object_id>/",
+      "name": "view_on_site",
+      "method": "GET",
+      "description": "Redirect to an object's page based on a content-type ID and an object ID."
+    },
+    {
+      "path": "admin/auth/group/",
+      "name": "auth_group_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/auth/group/add/",
+      "name": "auth_group_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/auth/group/<path:object_id>/history/",
+      "name": "auth_group_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/auth/group/<path:object_id>/delete/",
+      "name": "auth_group_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/auth/group/<path:object_id>/change/",
+      "name": "auth_group_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/auth/group/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/",
+      "name": "django_celery_beat_intervalschedule_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/add/",
+      "name": "django_celery_beat_intervalschedule_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/<path:object_id>/history/",
+      "name": "django_celery_beat_intervalschedule_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/<path:object_id>/delete/",
+      "name": "django_celery_beat_intervalschedule_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/<path:object_id>/change/",
+      "name": "django_celery_beat_intervalschedule_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/intervalschedule/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/",
+      "name": "django_celery_beat_crontabschedule_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/add/",
+      "name": "django_celery_beat_crontabschedule_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/<path:object_id>/history/",
+      "name": "django_celery_beat_crontabschedule_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/<path:object_id>/delete/",
+      "name": "django_celery_beat_crontabschedule_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/<path:object_id>/change/",
+      "name": "django_celery_beat_crontabschedule_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/crontabschedule/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/",
+      "name": "django_celery_beat_solarschedule_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/add/",
+      "name": "django_celery_beat_solarschedule_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/<path:object_id>/history/",
+      "name": "django_celery_beat_solarschedule_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/<path:object_id>/delete/",
+      "name": "django_celery_beat_solarschedule_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/<path:object_id>/change/",
+      "name": "django_celery_beat_solarschedule_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/solarschedule/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/",
+      "name": "django_celery_beat_clockedschedule_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/add/",
+      "name": "django_celery_beat_clockedschedule_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/<path:object_id>/history/",
+      "name": "django_celery_beat_clockedschedule_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/<path:object_id>/delete/",
+      "name": "django_celery_beat_clockedschedule_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/<path:object_id>/change/",
+      "name": "django_celery_beat_clockedschedule_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/clockedschedule/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/",
+      "name": "django_celery_beat_periodictask_changelist",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/add/",
+      "name": "django_celery_beat_periodictask_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/<path:object_id>/history/",
+      "name": "django_celery_beat_periodictask_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/<path:object_id>/delete/",
+      "name": "django_celery_beat_periodictask_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/<path:object_id>/change/",
+      "name": "django_celery_beat_periodictask_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/django_celery_beat/periodictask/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/customuser/",
+      "name": "users_customuser_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/customuser/add/",
+      "name": "users_customuser_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/customuser/<path:object_id>/history/",
+      "name": "users_customuser_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/customuser/<path:object_id>/delete/",
+      "name": "users_customuser_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/customuser/<path:object_id>/change/",
+      "name": "users_customuser_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/customuser/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/userpreferences/",
+      "name": "users_userpreferences_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/userpreferences/add/",
+      "name": "users_userpreferences_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/userpreferences/<path:object_id>/history/",
+      "name": "users_userpreferences_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/userpreferences/<path:object_id>/delete/",
+      "name": "users_userpreferences_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/userpreferences/<path:object_id>/change/",
+      "name": "users_userpreferences_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/userpreferences/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/location/",
+      "name": "users_location_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/location/add/",
+      "name": "users_location_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/location/<path:object_id>/history/",
+      "name": "users_location_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/location/<path:object_id>/delete/",
+      "name": "users_location_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/location/<path:object_id>/change/",
+      "name": "users_location_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/location/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/prayermethod/",
+      "name": "users_prayermethod_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/prayermethod/add/",
+      "name": "users_prayermethod_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayermethod/<path:object_id>/history/",
+      "name": "users_prayermethod_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/prayermethod/<path:object_id>/delete/",
+      "name": "users_prayermethod_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayermethod/<path:object_id>/change/",
+      "name": "users_prayermethod_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayermethod/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/prayeroffset/",
+      "name": "users_prayeroffset_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/prayeroffset/add/",
+      "name": "users_prayeroffset_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayeroffset/<path:object_id>/history/",
+      "name": "users_prayeroffset_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/prayeroffset/<path:object_id>/delete/",
+      "name": "users_prayeroffset_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayeroffset/<path:object_id>/change/",
+      "name": "users_prayeroffset_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/prayeroffset/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/users/subscriptiontier/",
+      "name": "users_subscriptiontier_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/users/subscriptiontier/add/",
+      "name": "users_subscriptiontier_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/subscriptiontier/<path:object_id>/history/",
+      "name": "users_subscriptiontier_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/users/subscriptiontier/<path:object_id>/delete/",
+      "name": "users_subscriptiontier_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/subscriptiontier/<path:object_id>/change/",
+      "name": "users_subscriptiontier_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/users/subscriptiontier/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/",
+      "name": "SalatTracker_prayertime_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/add/",
+      "name": "SalatTracker_prayertime_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/<path:object_id>/history/",
+      "name": "SalatTracker_prayertime_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/<path:object_id>/delete/",
+      "name": "SalatTracker_prayertime_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/<path:object_id>/change/",
+      "name": "SalatTracker_prayertime_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/prayertime/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/",
+      "name": "SalatTracker_dailyprayer_changelist",
+      "method": "GET",
+      "description": "The 'change list' admin view for this model."
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/add/",
+      "name": "SalatTracker_dailyprayer_add",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/<path:object_id>/history/",
+      "name": "SalatTracker_dailyprayer_history",
+      "method": "GET",
+      "description": "The 'history' admin view for this model."
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/<path:object_id>/delete/",
+      "name": "SalatTracker_dailyprayer_delete",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/<path:object_id>/change/",
+      "name": "SalatTracker_dailyprayer_change",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/SalatTracker/dailyprayer/<path:object_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "Provide a redirect on any GET request."
+    },
+    {
+      "path": "admin/^(?P<app_label>auth|django_celery_beat|users|SalatTracker)/$",
+      "name": "app_list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "admin/(?P<url>.*)$",
+      "name": "",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "^$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "^\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "swag/",
+      "name": "schema-swagger-ui",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "redoc/",
+      "name": "schema-redoc",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times/$",
+      "name": "prayertime-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayertime-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times/get_prayer_times_for_user_and_day/$",
+      "name": "prayertime-get-prayer-times-for-user-and-day",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times/get_prayer_times_for_user_and_day\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayertime-get-prayer-times-for-user-and-day",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times/(?P<pk>[^/.]+)/$",
+      "name": "prayertime-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-times/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayertime-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers/$",
+      "name": "dailyprayer-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "dailyprayer-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers/get_daily_prayer_for_user_and_day/$",
+      "name": "dailyprayer-get-daily-prayer-for-user-and-day",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers/get_daily_prayer_for_user_and_day\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "dailyprayer-get-daily-prayer-for-user-and-day",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers/(?P<pk>[^/.]+)/$",
+      "name": "dailyprayer-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^daily-prayers/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "dailyprayer-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "api/^\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "api/prayer-times-fetch/<int:user_id>/",
+      "name": "",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/prayer-times/<int:user_id>/<str:prayer_date>/",
+      "name": "get_prayer_times_for_user_and_day",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/dashboard/",
+      "name": "dashboard",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/dashboard/new/",
+      "name": "dashboard",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^users/$",
+      "name": "customuser-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^users\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "customuser-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^users/(?P<pk>[^/.]+)/$",
+      "name": "customuser-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^users/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "customuser-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^user-preferences/$",
+      "name": "userpreferences-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^user-preferences\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "userpreferences-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^user-preferences/(?P<pk>[^/.]+)/$",
+      "name": "userpreferences-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^user-preferences/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "userpreferences-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-methods/$",
+      "name": "prayer-method-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-methods\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayer-method-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-methods/(?P<pk>[^/.]+)/$",
+      "name": "prayer-method-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-methods/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayer-method-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-offsets/$",
+      "name": "prayeroffset-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-offsets\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayeroffset-list",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-offsets/(?P<pk>[^/.]+)/$",
+      "name": "prayeroffset-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^prayer-offsets/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "prayeroffset-detail",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/^$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "api/^\\.(?P<format>[a-z0-9]+)/?$",
+      "name": "api-root",
+      "method": "GET",
+      "description": "The default basic root view for DefaultRouter"
+    },
+    {
+      "path": "api/api/register/",
+      "name": "user_registration",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/api/activate/<str:token>/",
+      "name": "activate-account",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/api/resend-activation/<str:email>/",
+      "name": "resend-activation",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/api/reset-password/",
+      "name": "reset-password",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/api/reset-password/<str:token>/",
+      "name": "reset-password-confirm",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/signup/",
+      "name": "signup",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/login/",
+      "name": "login",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/api/activate/<str:uidb64>/<str:token>/",
+      "name": "activate-account",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/profile/edit/",
+      "name": "edit_profile",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/preferences/create/",
+      "name": "create_preferences",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/preferences/edit/",
+      "name": "edit_preferences",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/location/create/",
+      "name": "create_location",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/location/edit/",
+      "name": "edit_location",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/prayer-method/create/",
+      "name": "create_prayer_method",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/prayer-method/edit/",
+      "name": "edit_prayer_method",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/preferences/",
+      "name": "user_preferences",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/setup/step1/",
+      "name": "step1_user_preferences",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/setup/step2/",
+      "name": "step2_location",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/setup/step3/",
+      "name": "step3_prayer_method",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/setup/completed/",
+      "name": "setup_completed",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/setup/reset/",
+      "name": "reset_setup",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "api/token/",
+      "name": "token_obtain_pair",
+      "method": "GET",
+      "description": "Takes a set of user credentials and returns an access and refresh JSON web\n    token pair to prove the authentication of those credentials."
+    },
+    {
+      "path": "api/token/refresh/",
+      "name": "token_refresh",
+      "method": "GET",
+      "description": "Takes a refresh type JSON web token and returns an access type JSON web\n    token if the refresh token is valid."
+    },
+    {
+      "path": "my_docs/",
+      "name": "docs-index",
+      "method": "GET",
+      "description": "No description available"
+    },
+    {
+      "path": "my_docs/schema.js",
+      "name": "schema-js",
+      "method": "GET",
+      "description": "No description available"
+    }
+  ]
+}

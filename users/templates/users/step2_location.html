@@ -1,0 +1,27 @@
+{% extends "users/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Step 2: Location</h2>
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="{{ form.latitude.id_for_label }}" class="form-label">Latitude:</label>
+            {{ form.latitude }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.longitude.id_for_label }}" class="form-label">Longitude:</label>
+            {{ form.longitude }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.timezone.id_for_label }}" class="form-label">Timezone:</label>
+            {{ form.timezone }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Next</button>
+    </form>
+</div>
+{% endblock %}
