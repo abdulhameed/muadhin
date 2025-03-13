@@ -61,7 +61,7 @@ A Django-based web application that provides a service to send daily salah (Isla
 7. Start the Celery worker:
 
    ```
-   celery -A project_name worker --beat --loglevel=info
+   celery -A muadhin worker --beat --loglevel=info
    ```
 
 ## Usage
