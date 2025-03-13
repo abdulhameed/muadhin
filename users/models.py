@@ -14,6 +14,7 @@ timezone_choices = [(tz, tz) for tz in all_timezones]
 
 # user = get_user_model()
 
+
 class CustomUser(AbstractUser):
     sex = models.CharField(max_length=10, blank=True)
     address = models.CharField(max_length=255, blank=True)
@@ -41,7 +42,7 @@ class CustomUser(AbstractUser):
         now = user_timezone.localize(datetime.now())
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return midnight - timedelta(minutes=5)
-    
+
 
 class AuthToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='auth_token')
