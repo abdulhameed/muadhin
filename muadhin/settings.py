@@ -15,6 +15,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from celery.schedules import crontab
+import dj_database_url
 
 
 load_dotenv()
@@ -102,18 +103,34 @@ WSGI_APPLICATION = 'muadhin.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'muadhin_db',
-        'USER': 'muadhin_user',
-        'PASSWORD': 'Ramadan2025',
-        'HOST': 'localhost',
-        'PORT': '5432',
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'muadhin_db',
+#         'USER': 'muadhin_user',
+#         'PASSWORD': 'Ramadan2025',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
+
+IS_PRODUCTION = os.getenv("RENDER") is not None  # Render sets this env variable
+
+if IS_PRODUCTION:
+    DATABASES = {
+        'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
     }
-}
-
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'muadhin_db',
+            'USER': 'muadhin_user',
+            'PASSWORD': 'Ramadan2025',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
