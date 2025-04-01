@@ -12,6 +12,8 @@ from rest_framework.permissions import AllowAny
 from django.conf import settings
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -105,40 +107,6 @@ def ResendActivationEmailView(request):
 
     return Response({'success': 'Activation email has been resent'}, status=status.HTTP_200_OK)
 
-# class ResendActivationEmailView(generics.GenericAPIView):
-#     permission_classes = [AllowAny]
-#     parser_classes = [JSONParser, MultiPartParser, FormParser]
-
-#     def post(self, request):
-#         email = request.data.get('email')
-#         if not email:
-#             return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             user = CustomUser.objects.get(email=email)
-#         except CustomUser.DoesNotExist:
-#             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
-
-#         if user.is_active:
-#             return Response({'error': 'User account is already activated'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Generate and store a new activation token
-#         token = str(uuid.uuid4())
-#         AuthToken.objects.filter(user=user).delete()  # Delete any existing tokens
-#         auth_token = AuthToken.objects.create(user=user, token=token)
-
-#         # Send email activation link
-#         activation_link = request.build_absolute_uri(reverse('activate-account', args=[token]))
-#         send_mail(
-#             'Activate Your Account',
-#             f'Please click the following link to activate your account: {activation_link}',
-#             settings.EMAIL_HOST_USER,
-#             [user.email],
-#             fail_silently=False,
-#         )
-
-#         return Response({'success': 'Activation email has been resent'}, status=status.HTTP_200_OK)
-
 
 class PasswordResetView(generics.GenericAPIView):
     permission_classes = [AllowAny]
@@ -230,3 +198,15 @@ class PrayerMethodViewSet(viewsets.ModelViewSet):
 class PrayerOffsetViewSet(viewsets.ModelViewSet):
     queryset = PrayerOffset.objects.all()
     serializer_class = PrayerOffsetSerializer
+
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            # Include other user fields you need
+        })

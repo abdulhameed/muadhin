@@ -10,6 +10,7 @@ from .api_views import (
     AccountActivationView,
     PasswordResetView,
     PasswordResetConfirmView,
+    CurrentUserView
 )
 from .views import (
     CustomUserUpdateView, 
@@ -49,6 +50,7 @@ urlpatterns = [
     # path('activate/<uidb64>/<token>/', activate, name='activate'),
     path('api/activate/<str:uidb64>/<str:token>/', activate_account, name='activate-account'),
     #########################
+    path('current-user/', CurrentUserView.as_view(), name='current-user'),
     path('profile/edit/', CustomUserUpdateView.as_view(), name='edit_profile'),
     path('preferences/create/', UserPreferencesCreateView.as_view(), name='create_preferences'),
     path('preferences/edit/', UserPreferencesUpdateView.as_view(), name='edit_preferences'),
