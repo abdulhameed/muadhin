@@ -338,7 +338,7 @@ migrations/
 **/__pycache__/*
 *.pyc
 
-manage.py
+# manage.py
 
 /migrations/
 **/migrations/

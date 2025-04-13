@@ -96,29 +96,15 @@ WSGI_APPLICATION = 'muadhin.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'muadhin_db',
-#         'USER': 'muadhin_user',
-#         'PASSWORD': 'Ramadan2025',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
 
 IS_PRODUCTION = os.getenv("RENDER") is not None  # Render sets this env variable
 
 if IS_PRODUCTION:
     DATABASES = {
-        'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / "db.sqlite3",
+        }
     }
 else:
     DATABASES = {

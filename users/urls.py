@@ -39,12 +39,12 @@ router.register(r'prayer-offsets', PrayerOffsetViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('api/register/', UserRegistrationView.as_view(), name='user_registration'),
-    path('api/activate/<str:token>/', AccountActivationView.as_view(), name='activate-account'),
-    path('api/resend-activation/<str:email>/', ResendActivationEmailView, name='resend-activation'),
-    path('api/reset-password/', PasswordResetView.as_view(), name='reset-password'),
-    path('api/reset-password/<str:token>/', PasswordResetConfirmView.as_view(), name='reset-password-confirm'),
-# 
+    path('register/', UserRegistrationView.as_view(), name='user_registration'),
+    path('activate/<str:token>/', AccountActivationView.as_view(), name='activate-account'),
+    path('resend-activation/<str:email>/', ResendActivationEmailView, name='resend-activation'),
+    path('reset-password/', PasswordResetView.as_view(), name='reset-password'),
+    path('reset-password/<str:token>/', PasswordResetConfirmView.as_view(), name='reset-password-confirm'),
+
     path('signup/', SignUpView.as_view(), name='signup'),
     path('login/', CustomLoginView.as_view(), name='login'),
     # path('activate/<uidb64>/<token>/', activate, name='activate'),

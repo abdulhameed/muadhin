@@ -4,7 +4,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.urls import reverse
 from .permissions import IsOwnerOrReadOnly
-from .models import CustomUser, UserPreferences, PrayerMethod, PrayerOffset, AuthToken
+from .models import CustomUser, PasswordResetToken, UserPreferences, PrayerMethod, PrayerOffset, AuthToken
 from .serializers import UserPreferencesSerializer, PrayerMethodSerializer, PrayerOffsetSerializer, CustomUserSerializer
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,6 +14,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -73,6 +74,7 @@ class AccountActivationView(generics.GenericAPIView):
         auth_token.delete()  # Delete the activation token after successful activation
         return Response({'success': 'Account activated successfully'}, status=status.HTTP_200_OK)
 
+
 #   TODO FIX
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -113,10 +115,10 @@ class PasswordResetView(generics.GenericAPIView):
 
     def get_serializer_class(self):
         return None
-    
+
     def get_serializer(self, *args, **kwargs):
         return None
-    
+
     def post(self, request):
         email = request.data.get('email')
         try:
@@ -124,13 +126,30 @@ class PasswordResetView(generics.GenericAPIView):
         except CustomUser.DoesNotExist:
             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Generate and store a new reset token
+        token = str(uuid.uuid4())
+        # Delete any existing reset tokens for this user
+        PasswordResetToken.objects.filter(user=user).delete()
+
+        # Set expiry time - 24 hours from now
+        expires_at = timezone.now() + timezone.timedelta(hours=24)
+
+        # Create new token with expiry
+        reset_token = PasswordResetToken.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at,
+            is_used=False,
+            is_expired=False
+        )
+
         # Send password reset email
-        token = default_token_generator.make_token(user)
-        reset_link = request.build_absolute_uri(reverse('reset-password', args=[token]))
+        reset_link = request.build_absolute_uri(reverse('reset-password-confirm', args=[token]))
         send_mail(
             'Reset Your Password',
-            f'Please click the following link to reset your password: {reset_link}',
-            # Your email settings
+            f'Please click the following link to reset your password: {reset_link}\nThis link will expire in 24 hours.',
+            settings.EMAIL_HOST_USER,
+            [user.email],
             fail_silently=False,
         )
 
@@ -142,19 +161,42 @@ class PasswordResetConfirmView(generics.GenericAPIView):
 
     def get_serializer_class(self):
         return None
-    
+
     def get_serializer(self, *args, **kwargs):
         return None
-    
+
     def post(self, request, token):
         try:
-            user = CustomUser.objects.get(auth_token__token=token)
-        except CustomUser.DoesNotExist:
+            reset_token = PasswordResetToken.objects.get(token=token)
+
+            # Check if token is already used
+            if reset_token.is_used:
+                return Response({'error': 'This reset link has already been used'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if token is expired
+            current_time = timezone.now()
+            if current_time > reset_token.expires_at or reset_token.is_expired:
+                # Mark as expired
+                reset_token.is_expired = True
+                reset_token.save()
+                return Response({'error': 'This reset link has expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = reset_token.user
+
+        except PasswordResetToken.DoesNotExist:
             return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
 
         new_password = request.data.get('new_password')
+        if not new_password:
+            return Response({'error': 'New password is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user.set_password(new_password)
         user.save()
+
+        # Mark token as used instead of deleting
+        reset_token.is_used = True
+        reset_token.save()
+
         return Response({'success': 'Password reset successful'}, status=status.HTTP_200_OK)
 
 
