@@ -96,25 +96,26 @@ WSGI_APPLICATION = 'muadhin.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Check if running on Railway
+IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") is not None
 
-IS_PRODUCTION = os.getenv("RENDER") is not None  # Render sets this env variable
-
-if IS_PRODUCTION:
+if IS_RAILWAY:
+    # Production database (PostgreSQL on Railway)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / "db.sqlite3",
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('PGDATABASE'),
+            'USER': os.getenv('PGUSER'),
+            'PASSWORD': os.getenv('PGPASSWORD'),
+            'HOST': os.getenv('PGHOST'),
+            'PORT': os.getenv('PGPORT'),
         }
     }
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'muadhin_db',
-            'USER': 'muadhin_user',
-            'PASSWORD': 'Ramadan2025',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / "db.sqlite3",
         }
     }
 
