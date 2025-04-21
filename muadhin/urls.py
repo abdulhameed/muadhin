@@ -26,6 +26,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from muadhin.views import health_check
 from users.views import homepage
 
 router = DefaultRouter()
@@ -54,4 +55,5 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('my_docs/', include_docs_urls(title="API Documentation")),
+    path('health/', health_check, name='health_check'),
 ]

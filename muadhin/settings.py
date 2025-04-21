@@ -96,28 +96,58 @@ WSGI_APPLICATION = 'muadhin.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Check if running on Railway
-IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") is not None
+DATABASES = {
+    'default': dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
-if IS_RAILWAY:
-    # Production database (PostgreSQL on Railway)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('PGDATABASE'),
-            'USER': os.getenv('PGUSER'),
-            'PASSWORD': os.getenv('PGPASSWORD'),
-            'HOST': os.getenv('PGHOST'),
-            'PORT': os.getenv('PGPORT'),
+# Fallback to existing configuration if DATABASE_URL is not set
+if 'default' not in DATABASES or not DATABASES['default']:
+    if os.getenv("RAILWAY_ENVIRONMENT") is not None:
+        # Production database (PostgreSQL on Railway)
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.getenv('PGDATABASE'),
+                'USER': os.getenv('PGUSER'),
+                'PASSWORD': os.getenv('PGPASSWORD'),
+                'HOST': os.getenv('PGHOST'),
+                'PORT': os.getenv('PGPORT'),
+            }
         }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / "db.sqlite3",
+    else:
+        # Development database (SQLite)
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / "db.sqlite3",
+            }
         }
-    }
+
+# Check if running on Railway
+# IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") is not None
+
+# if IS_RAILWAY:
+#     # Production database (PostgreSQL on Railway)
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': os.getenv('PGDATABASE'),
+#             'USER': os.getenv('PGUSER'),
+#             'PASSWORD': os.getenv('PGPASSWORD'),
+#             'HOST': os.getenv('PGHOST'),
+#             'PORT': os.getenv('PGPORT'),
+#         }
+#     }
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / "db.sqlite3",
+#         }
+#     }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -175,8 +205,8 @@ CACHES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Use the URL of your message broker
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Use the same URL as CELERY_BROKER_URL
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -191,6 +221,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# Support for Railway's PORT environment variable
+PORT = int(os.getenv('PORT', 8000))
+
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -198,6 +231,16 @@ CORS_ALLOW_HEADERS = [
     "authorization",
     "content-type",
     "x-csrftoken",
+]
+
+# Update for Railway deployment
+if os.getenv('RAILWAY_STATIC_URL'):
+    STATIC_URL = os.getenv('RAILWAY_STATIC_URL')
+
+# Add Railway to trusted hosts
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.up.railway.app',
+    'http://127.0.0.1:8000',
 ]
 
 REST_FRAMEWORK = {
