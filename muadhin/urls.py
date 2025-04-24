@@ -48,7 +48,11 @@ urlpatterns = [
     path('home/', homepage, name='home'),
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path('swag/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path(
+        'swag/',
+        schema_view.with_ui('swagger', cache_timeout=0),
+        name='schema-swagger-ui'
+    ),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('api/', include('SalatTracker.urls')),
     path('api/', include('users.urls')),

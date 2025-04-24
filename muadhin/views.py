@@ -9,7 +9,10 @@ def health_check(request):
             cursor.execute("SELECT 1")
             one = cursor.fetchone()[0]
             if one != 1:
-                return JsonResponse({"status": "error", "message": "Database check failed"}, status=500)
+                return JsonResponse(
+                    {"status": "error", "message": "Database check failed"},
+                    status=500
+                )
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
