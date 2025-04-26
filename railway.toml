@@ -4,13 +4,14 @@ builder = "NIXPACKS"
 buildCommand = "echo 'Skipping collectstatic during build phase'"
 
 [deploy]
-# Run with verbose output for debugging
+# Run with simple entry
 startCommand = "/app/docker-entrypoint.sh web"
-# Use the simple health check that doesn't depend on database
-healthcheckPath = "/simple-health/"
+# Use a very simple health check that doesn't depend on database
+healthcheckPath = "/ping/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [env]
 PYTHON_VERSION = "3.10.5"
+SKIP_MIGRATIONS = "no"  # Set to "yes" to skip migrations during startup for testing
