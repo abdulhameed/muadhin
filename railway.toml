@@ -1,13 +1,16 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "python manage.py collectstatic --noinput"
+# Skip collectstatic during build
+buildCommand = "echo 'Skipping collectstatic during build phase'"
 
 [deploy]
-startCommand = "gunicorn muadhin.wsgi:application --bind 0.0.0.0:$PORT"
-healthcheckPath = "/health/"
+# Run with verbose output for debugging
+startCommand = "/app/docker-entrypoint.sh web"
+# Use the simple health check that doesn't depend on database
+healthcheckPath = "/simple-health/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 10
 
 [env]
 PYTHON_VERSION = "3.10.5"

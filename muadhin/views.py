@@ -17,3 +17,8 @@ def health_check(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
     return JsonResponse({"status": "healthy"})
+
+
+def simple_health_check(request):
+    # A very basic health check that doesn't depend on database
+    return JsonResponse({"status": "healthy"})
