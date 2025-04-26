@@ -93,61 +93,78 @@ TEMPLATES = [
 WSGI_APPLICATION = 'muadhin.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# Database Configuration
+# Try to get the DATABASE_URL first (provided by Railway)
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-DATABASES = {
-    'default': dj_database_url.config(
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
-
-# Fallback to existing configuration if DATABASE_URL is not set
-if 'default' not in DATABASES or not DATABASES['default']:
-    if os.getenv("RAILWAY_ENVIRONMENT") is not None:
-        # Production database (PostgreSQL on Railway)
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.getenv('PGDATABASE'),
-                'USER': os.getenv('PGUSER'),
-                'PASSWORD': os.getenv('PGPASSWORD'),
-                'HOST': os.getenv('PGHOST'),
-                'PORT': os.getenv('PGPORT'),
-            }
+if DATABASE_URL:
+    # If DATABASE_URL is available, use it (Railway or other deployment)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=False  # Change to True if needed
+        )
+    }
+elif os.getenv('RAILWAY_ENVIRONMENT'):
+    # Explicitly use Railway PostgreSQL environment variables
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('PGDATABASE'),
+            'USER': os.getenv('PGUSER'),
+            'PASSWORD': os.getenv('PGPASSWORD'),
+            'HOST': os.getenv('PGHOST'),  # Important: Use the hostname, not a socket path
+            'PORT': os.getenv('PGPORT'),
         }
-    else:
-        # Development database (SQLite)
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / "db.sqlite3",
-            }
+    }
+else:
+    # Local development with SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
+    }
 
-# Check if running on Railway
-# IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") is not None
+# Print database connection info for debugging (remove in production)
+print(f"Database connection info: HOST={DATABASES['default'].get('HOST', 'not set')}, "
+      f"NAME={DATABASES['default'].get('NAME', 'not set')}, "
+      f"PORT={DATABASES['default'].get('PORT', 'not set')}")
 
-# if IS_RAILWAY:
-#     # Production database (PostgreSQL on Railway)
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql',
-#             'NAME': os.getenv('PGDATABASE'),
-#             'USER': os.getenv('PGUSER'),
-#             'PASSWORD': os.getenv('PGPASSWORD'),
-#             'HOST': os.getenv('PGHOST'),
-#             'PORT': os.getenv('PGPORT'),
+# # Database
+# # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         conn_max_age=600,
+#         conn_health_checks=True,
+#     )
+# }
+
+# # Fallback to existing configuration if DATABASE_URL is not set
+# if 'default' not in DATABASES or not DATABASES['default']:
+#     if os.getenv("RAILWAY_ENVIRONMENT") is not None:
+#         # Production database (PostgreSQL on Railway)
+#         DATABASES = {
+#             'default': {
+#                 'ENGINE': 'django.db.backends.postgresql',
+#                 'NAME': os.getenv('PGDATABASE'),
+#                 'USER': os.getenv('PGUSER'),
+#                 'PASSWORD': os.getenv('PGPASSWORD'),
+#                 'HOST': os.getenv('PGHOST'),
+#                 'PORT': os.getenv('PGPORT'),
+#             }
 #         }
-#     }
-# else:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / "db.sqlite3",
+#     else:
+#         # Development database (SQLite)
+#         DATABASES = {
+#             'default': {
+#                 'ENGINE': 'django.db.backends.sqlite3',
+#                 'NAME': BASE_DIR / "db.sqlite3",
+#             }
 #         }
-#     }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

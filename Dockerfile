@@ -4,7 +4,7 @@ FROM python:3.10.5-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=muadhin.settings
-ENV SECRET_KEY="django-insecure-build-key-just-for-collectstatic"
+ENV SECRET_KEY="build-time-only-key"
 ENV DEBUG=False
 
 # Set work directory
@@ -26,8 +26,10 @@ COPY . /app/
 # Create directory for static files
 RUN mkdir -p /app/static
 
+# Create a very simple health check directly in the Dockerfile
+RUN echo 'from django.http import JsonResponse\n\ndef ping(request):\n    return JsonResponse({"status": "ok"})' > /app/health_view.py
+
 # Make the entrypoint script executable
-# Note: We're using the file that already exists in your project
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose the port the app runs on
@@ -36,3 +38,42 @@ EXPOSE 8000
 # Command to run when the container starts
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["web"]
+
+# FROM python:3.10.5-slim
+
+# # Set environment variables
+# ENV PYTHONDONTWRITEBYTECODE=1
+# ENV PYTHONUNBUFFERED=1
+# ENV DJANGO_SETTINGS_MODULE=muadhin.settings
+# ENV SECRET_KEY="django-insecure-build-key-just-for-collectstatic"
+# ENV DEBUG=False
+
+# # Set work directory
+# WORKDIR /app
+
+# # Install dependencies
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     postgresql-client \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # Install Python dependencies
+# COPY requirements.txt /app/
+# RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# # Copy project
+# COPY . /app/
+
+# # Create directory for static files
+# RUN mkdir -p /app/static
+
+# # Make the entrypoint script executable
+# # Note: We're using the file that already exists in your project
+# RUN chmod +x /app/docker-entrypoint.sh
+
+# # Expose the port the app runs on
+# EXPOSE 8000
+
+# # Command to run when the container starts
+# ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# CMD ["web"]

@@ -25,9 +25,16 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-
+from django.http import JsonResponse
 from muadhin.views import health_check, simple_health_check
 from users.views import homepage
+
+
+def simple_health(request):
+    """
+    A very simple health check that doesn't depend on the database
+    """
+    return JsonResponse({"status": "ok"})
 
 router = DefaultRouter()
 
@@ -45,6 +52,8 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('ping/', simple_health, name='ping'),
+    path('health/', simple_health, name='health'),
     path('home/', homepage, name='home'),
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
