@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class DailyPrayer(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # User to whom the prayer times belong
     prayer_date = models.DateField(null=True, blank=True)  # Date for which the prayer times are applicable
     weekday_name = models.CharField(max_length=20, null=True, blank=True)  # Name of the weekday
     is_email_notified = models.BooleanField(default=False)  # Flag to track if email reminder has been sent
