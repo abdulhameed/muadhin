@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - muadhin_network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: muadhin_db
+      POSTGRES_USER: muadhin_user
+      POSTGRES_PASSWORD: muadhin_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - muadhin_network
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - muadhin_network
+
+  celery:
+    build: .
+    command: celery -A muadhin worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - muadhin_network
+
+  celery-beat:
+    build: .
+    command: celery -A muadhin beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - muadhin_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  muadhin_network:
+    driver: bridge

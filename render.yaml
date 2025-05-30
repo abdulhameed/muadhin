@@ -1,0 +1,62 @@
+services:
+  # Django Web Service
+  - type: web
+    name: muadhin-web
+    env: python
+    buildCommand: chmod +x render_build.sh && ./render_build.sh
+    startCommand: gunicorn muadhin.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # You'll set this manually from Supabase
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: muadhin-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+    
+  # Celery Worker Service
+  - type: worker
+    name: muadhin-celery
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A muadhin worker --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # You'll set this manually from Supabase
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: muadhin-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+    
+  # Celery Beat Service
+  - type: worker
+    name: muadhin-celery-beat
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A muadhin beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # You'll set this manually from Supabase
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: muadhin-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+
+  # Redis Service
+  - type: redis
+    name: muadhin-redis
+    ipAllowList: []
