@@ -329,10 +329,10 @@ pip-selfcheck.json
 
 # End of https://www.gitignore.io/api/python,django,jetbrains,virtualenv,sublimetext,visualstudiocode
 
-/migrations/
-migrations
-migrations/
-/migrations
+# /migrations/
+# migrations
+# migrations/
+# /migrations
 
 
 **/__pycache__/*
@@ -340,9 +340,9 @@ migrations/
 
 manage.py
 
-/migrations/
-**/migrations/
-*/migrations/
+# /migrations/
+# **/migrations/
+# */migrations/
 .venv
 venv
 /venv/
