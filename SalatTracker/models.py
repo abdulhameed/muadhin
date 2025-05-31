@@ -20,7 +20,6 @@ class DailyPrayer(models.Model):
 
 
 class PrayerTime(models.Model):
-    # FIXED: Added null=True, blank=True to prevent migration error
     daily_prayer = models.ForeignKey(DailyPrayer, on_delete=models.CASCADE, null=True, blank=True, related_name='prayer_times')
     prayer_name = models.CharField(max_length=50)
     prayer_time = models.TimeField(null=True, blank=True)

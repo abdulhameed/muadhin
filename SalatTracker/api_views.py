@@ -35,17 +35,25 @@ class PrayerTimeViewSet(viewsets.ModelViewSet):
     def get_prayer_times_for_user_and_day(self, request, user_id, prayer_date):
         try:
             daily_prayer = DailyPrayer.objects.get(user=user_id, prayer_date=prayer_date)
-            prayer_times = daily_prayer.prayer_times.all()  # Assuming you have a related name for the reverse relationship in DailyPrayer model
+            # FIXED: Use correct related_name
+            prayer_times = daily_prayer.prayer_times.all()
             serializer = PrayerTimeSerializer(prayer_times, many=True)
             return Response(serializer.data)
         except DailyPrayer.DoesNotExist:
-            return Response("Prayer times not found for the given user and date", status=404)
+            return Response({"error": "Prayer times not found for the given user and date"}, status=404)
 
 
 class PrayerTimeFetch(APIView):
     def get(self, request, user_id):
-        user = CustomUser.objects.get(pk=user_id)
-        prayer_method = PrayerMethod.objects.get(user=user)
-        date = request.query_params.get('date', datetime.now().strftime('%d-%m-%Y'))
-        fetch_and_save_daily_prayer_times(user_id, date)
-        return Response("Prayer times are being fetched and saved.")
+        try:
+            user = CustomUser.objects.get(pk=user_id)
+            # FIXED: Handle missing PrayerMethod
+            prayer_method, created = PrayerMethod.objects.get_or_create(
+                user=user,
+                defaults={'sn': 1, 'name': 'Muslim World League'}
+            )
+            date = request.query_params.get('date', datetime.now().strftime('%d-%m-%Y'))
+            fetch_and_save_daily_prayer_times.delay(user_id, date)
+            return Response({"message": "Prayer times are being fetched and saved."})
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)

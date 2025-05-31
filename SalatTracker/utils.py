@@ -9,6 +9,7 @@ from datetime import datetime
 from django.utils import timezone
 from .models import DailyPrayer, PrayerTime
 from django.contrib.auth import get_user_model
+from django.utils.dateparse import parse_time
 
 
 User = get_user_model()
@@ -17,7 +18,12 @@ User = get_user_model()
 # Not being used
 def fetch_and_save_prayer_times(user_id, date):
     user = User.objects.get(pk=user_id)
-    prayer_method = PrayerMethod.objects.get(user=user)
+    # prayer_method = PrayerMethod.objects.get(user=user)
+    try:
+        prayer_method = PrayerMethod.objects.get(user=user)
+    except PrayerMethod.DoesNotExist:
+        # Create default or handle gracefully
+        prayer_method = PrayerMethod.objects.create(user=user, sn=1, name='Muslim World League')
 
     api_url = "http://api.aladhan.com/v1/timingsByCity"
     params = {
@@ -64,7 +70,7 @@ def fetch_and_save_prayer_times(user_id, date):
                 }
             )
             if not created:
-                prayer_time_obj.prayer_time = datetime.strptime(prayer_time, '%H:%M')
+                prayer_time_obj.prayer_time = parse_time(prayer_time)
                 prayer_time_obj.save()
                 
         # Call the function to send the daily prayer message

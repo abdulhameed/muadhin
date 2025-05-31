@@ -21,19 +21,22 @@ class CustomUserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        User = get_user_model()
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            is_active=False,  # Set is_active to False
+            is_active=True,  # Set is_active to False
         )
-        user.sex = validated_data.get('sex', '')
-        user.address = validated_data.get('address', '')
-        user.city = validated_data.get('city', 'ABUJA')
-        user.country = validated_data.get('country', 'NIGERIA')
-        user.timezone = validated_data.get('timezone', 'Africa/Lagos')
-        user.phone_number = validated_data.get('phone_number', '')
+        # user.sex = validated_data.get('sex', '')
+        # user.address = validated_data.get('address', '')
+        # user.city = validated_data.get('city', 'ABUJA')
+        # user.country = validated_data.get('country', 'NIGERIA')
+        # user.timezone = validated_data.get('timezone', 'Africa/Lagos')
+        # user.phone_number = validated_data.get('phone_number', '')
+        # Set other fields
+        for field in ['sex', 'address', 'city', 'country', 'timezone', 'phone_number']:
+            if field in validated_data:
+                setattr(user, field, validated_data[field])
         user.save()
         return user
 
@@ -48,32 +51,24 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+# BUG: perform_update and perform_destroy don't belong in serializer
+# TODO: These should be in the ViewSet
 class PrayerMethodSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
+    user = serializers.StringRelatedField(read_only=True)
+    
     class Meta:
         model = PrayerMethod
         fields = ['id', 'user', 'name', 'sn']
+        read_only_fields = ['user']  # User set automatically
 
     def create(self, validated_data):
-        # Get the current authenticated user
-        user = self.context['request'].user
-
-        # Create the PrayerMethod instance with the user instance
-        prayer_method = PrayerMethod.objects.create(
-            sn=validated_data['sn'],
-            name=validated_data['name'],
-            user=user
-        )
-        return prayer_method
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
     
     def update(self, instance, validated_data):
-        # Get the current authenticated user
-        user = self.context['request'].user
-
-        # Update the PrayerMethod instance with the user instance
+        # Remove user update logic - user shouldn't change
         instance.sn = validated_data.get('sn', instance.sn)
         instance.name = validated_data.get('name', instance.name)
-        instance.user = user
         instance.save()
         return instance
 

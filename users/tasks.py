@@ -10,6 +10,7 @@ from django.core.cache import cache
 from rest_framework.response import Response
 import requests
 from django.utils import timezone
+from django.utils.dateparse import parse_time
 
 from users.models import PrayerMethod
 
@@ -40,7 +41,12 @@ def check_and_schedule_daily_tasks():
 @shared_task
 def fetch_and_save_daily_prayer_times(user_id, date):
     user = User.objects.get(pk=user_id)
-    prayer_method = PrayerMethod.objects.get(user=user)
+    # prayer_method = PrayerMethod.objects.get(user=user)
+    try:
+        prayer_method = PrayerMethod.objects.get(user=user)
+    except PrayerMethod.DoesNotExist:
+        # Create default or handle gracefully
+        prayer_method = PrayerMethod.objects.create(user=user, sn=1, name='Muslim World League')
 
     api_url = "http://api.aladhan.com/v1/timingsByCity"
     params = {
@@ -87,7 +93,8 @@ def fetch_and_save_daily_prayer_times(user_id, date):
                 }
             )
             if not created:
-                prayer_time_obj.prayer_time = datetime.strptime(prayer_time, '%H:%M')
+                prayer_time_obj.prayer_time = parse_time(prayer_time)
+                # prayer_time_obj.prayer_time = datetime.strptime(prayer_time, '%H:%M')
                 prayer_time_obj.save()
                 
         # Call the function to send the daily prayer message
