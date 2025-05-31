@@ -24,7 +24,7 @@ def fetch_and_save_prayer_times(user_id, date):
         "date": date,
         "city": user.city,
         "country": user.country,
-        "method": prayer_method.id,
+        "method": prayer_method.sn,
     }
 
     response = requests.get(api_url, params=params)

@@ -13,6 +13,7 @@ from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django_mailgun_mime.backends import MailgunMIMEBackend
+from django.utils.dateparse import parse_time
 
 
 TWILIO_SID = settings.TWILIO_ACCOUNT_SID
@@ -63,7 +64,7 @@ def fetch_and_save_daily_prayer_times(user_id, date):
         "date": date,
         "city": user.city,
         "country": user.country,
-        "method": prayer_method.id,
+        "method": prayer_method.sn,
     }
 
     response = requests.get(api_url, params=params)
@@ -239,7 +240,7 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
     daily_prayer = DailyPrayer.objects.get(user=user, prayer_date=current_date)
 
     # Schedule notifications for each prayer time
-    for prayer_time_obj in daily_prayer.prayertime_set.all():
+    for prayer_time_obj in daily_prayer.prayer_times.all():
         prayer_datetime = datetime.combine(current_date, prayer_time_obj.prayer_time)
         notification_time_delta = timezone.timedelta(minutes=user_preferences.notification_time_before_prayer)
         notification_time = (prayer_datetime - notification_time_delta).time()
@@ -275,7 +276,7 @@ def schedule_phone_calls_for_day(user_id, date):
 
     if user_preferences.adhan_call_method == 'call':
         adhan_audio_url = 'https://media.sd.ma/assabile/adhan_3435370/0bf83c80b583.mp3'
-        for prayer_time_obj in daily_prayer.prayertime_set.all():
+        for prayer_time_obj in daily_prayer.prayer_times.all():
             prayer_time = prayer_time_obj.prayer_time
             call_datetime = datetime.combine(date, prayer_time)
             make_call_and_play_audio.apply_async((user.phone_number, adhan_audio_url), eta=call_datetime)

@@ -35,7 +35,7 @@ class PrayerTimeViewSet(viewsets.ModelViewSet):
     def get_prayer_times_for_user_and_day(self, request, user_id, prayer_date):
         try:
             daily_prayer = DailyPrayer.objects.get(user=user_id, prayer_date=prayer_date)
-            prayer_times = daily_prayer.prayertime_set.all()  # Assuming you have a related name for the reverse relationship in DailyPrayer model
+            prayer_times = daily_prayer.prayer_times.all()  # Assuming you have a related name for the reverse relationship in DailyPrayer model
             serializer = PrayerTimeSerializer(prayer_times, many=True)
             return Response(serializer.data)
         except DailyPrayer.DoesNotExist:

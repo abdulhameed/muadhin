@@ -37,34 +37,6 @@ def check_and_schedule_daily_tasks():
             user_profile.save()
 
 
-# @shared_task
-# def check_and_schedule_daily_tasks():
-#     user_profiles = User.objects.all()
-#     processed_users_key = f"processed_users_{datetime.now().date()}"  # Key for the current date
-#     # processed_users = cache.get(processed_users_key, set())  # Get processed users from cache
-#     user_count = user_profiles.count()
-#     print(f"Number of users: {user_count}")
-#     for user_profile in user_profiles:
-#         user_timezone = pytz.timezone(user_profile.timezone)
-#         now = user_timezone.localize(datetime.now())
-#         midnight = user_profile.next_midnight
-
-#         last_scheduled = user_profile.last_scheduled_time
-#         # Check if the user's midnight falls within the next hour
-#         if (
-#             midnight <= now + timedelta(hours=1)
-#             # and user_profile.id not in processed_users
-#             and (not last_scheduled or now - last_scheduled > timedelta(hours=24))
-#         ):
-#             # Run the fetch_and_save_daily_prayer_times task for the user
-#             fetch_and_save_daily_prayer_times.delay(user_profile.id)
-#             # processed_users.add(user_profile.id)  # Add the user to the processed set
-#             user_profile.last_scheduled_time = now
-#             user_profile.save()
-
-    # cache.set(processed_users_key, processed_users)  # Store processed users in cache
-
-
 @shared_task
 def fetch_and_save_daily_prayer_times(user_id, date):
     user = User.objects.get(pk=user_id)
@@ -75,7 +47,7 @@ def fetch_and_save_daily_prayer_times(user_id, date):
         "date": date,
         "city": user.city,
         "country": user.country,
-        "method": prayer_method.id,
+        "method": prayer_method.sn,
     }
 
     response = requests.get(api_url, params=params)
