@@ -13,9 +13,12 @@ from django.conf import settings
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from django.http import HttpResponse
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+# from django.contrib.auth.models import User
 
 
+User = get_user_model()
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = CustomUserSerializer

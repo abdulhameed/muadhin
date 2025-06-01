@@ -11,7 +11,9 @@ class UsersConfig(AppConfig):
 
     def create_dev_admin(self):
         try:
-            from django.contrib.auth.models import User
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            # Create a superuser if it doesn't exist
             with transaction.atomic():
                 if not User.objects.filter(username='admin4').exists():
                     User.objects.create_superuser(

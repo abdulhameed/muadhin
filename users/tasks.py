@@ -102,10 +102,20 @@ def fetch_and_save_daily_prayer_times(user_id, date):
         schedule_notifications_for_day.delay(user_id, gregorian_date_formatted)
         schedule_phone_calls_for_day.delay(user_id, gregorian_date_formatted)
 
-        return Response(response_data)
-
+        # ✅ Return JSON-serializable data instead of Response
+        return {
+            "status": "success",
+            "timings": data,
+            "gregorian_date": gregorian_date,
+            "gregorian_weekday": gregorian_weekday,
+        }
         # Call the function to send the notification
         # send_daily_prayer_notification(user)
     else:
         # Handle the error case
-        return Response("Failed to fetch prayer times", status=400)
+        # ✅ Return JSON-serializable data instead of Response
+        return {
+            "status": "error", 
+            "message": "Failed to fetch prayer times",
+            "status_code": response.status_code
+        }
