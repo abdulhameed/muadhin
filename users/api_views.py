@@ -12,6 +12,9 @@ from rest_framework.permissions import AllowAny
 from django.conf import settings
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
+from django.http import HttpResponse
+from django.contrib.auth.models import User
+
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -196,3 +199,15 @@ class PrayerMethodViewSet(viewsets.ModelViewSet):
 class PrayerOffsetViewSet(viewsets.ModelViewSet):
     queryset = PrayerOffset.objects.all()
     serializer_class = PrayerOffsetSerializer
+
+
+def create_admin_view(request):
+    username = 'admin3'
+    email = 'admin3@example1.com'
+    password = 'admin123456'
+    
+    if not User.objects.filter(username=username).exists():
+        User.objects.create_superuser(username, email, password)
+        return HttpResponse(f'Admin user "{username}" created successfully!')
+    else:
+        return HttpResponse(f'Admin user "{username}" already exists')
