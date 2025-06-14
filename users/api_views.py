@@ -14,6 +14,8 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
 
 # from django.contrib.auth.models import User
 
@@ -214,3 +216,10 @@ def create_admin_view(request):
         return HttpResponse(f'Admin user "{username}" created successfully!')
     else:
         return HttpResponse(f'Admin user "{username}" already exists')
+    
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom JWT login view that includes user information in the response
+    """
+    serializer_class = CustomTokenObtainPairSerializer

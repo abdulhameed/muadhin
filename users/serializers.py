@@ -1,19 +1,37 @@
 from rest_framework import serializers
 from .models import UserPreferences, PrayerMethod, PrayerOffset, CustomUser
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+# from rest_framework_simplejwt.views import TokenObtainPairView
 
 User = get_user_model()
 
 
-# class CustomUserSerializer(serializers.ModelSerializer):
-
-#     password = serializers.CharField(read_only=True)
-#     # is_superuser = serializers.BooleanField(read_only=True)
-#     class Meta:
-#         model = CustomUser
-#         exclude = ('is_superuser', 'is_staff', 'is_active', 
-#                    'last_login', 'date_joined', 'groups', 'user_permissions')
-
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Get the default token data
+        data = super().validate(attrs)
+        
+        # Add user information to the response
+        data['user'] = {
+            'id': self.user.id,
+            'username': self.user.username,
+            'email': self.user.email,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'sex': self.user.sex,
+            'address': self.user.address,
+            'city': self.user.city,
+            'country': self.user.country,
+            'timezone': self.user.timezone,
+            'phone_number': self.user.phone_number,
+            'is_active': self.user.is_active,
+            'date_joined': self.user.date_joined,
+        }
+        
+        return data
+    
+    
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser

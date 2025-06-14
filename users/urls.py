@@ -10,7 +10,8 @@ from .api_views import (
     AccountActivationView,
     PasswordResetView,
     PasswordResetConfirmView,
-    create_admin_view
+    create_admin_view,
+    CustomTokenObtainPairView
 )
 
 router = DefaultRouter()
@@ -27,4 +28,5 @@ urlpatterns = [
     path('api/reset-password/', PasswordResetView.as_view(), name='reset-password'),
     path('api/reset-password/<str:token>/', PasswordResetConfirmView.as_view(), name='reset-password-confirm'),
     path('create-admin/', create_admin_view, name='create_admin'),
+    path('api/login/', CustomTokenObtainPairView.as_view(), name='custom_token_obtain_pair'),
 ]
