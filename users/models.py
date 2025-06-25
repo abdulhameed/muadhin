@@ -4,6 +4,9 @@ from django.contrib.auth import get_user_model
 import pytz
 from datetime import datetime, time, timedelta
 from phonenumbers import parse, is_valid_number, format_number, PhoneNumberFormat
+from django.core.exceptions import ValidationError
+from subscriptions.models import UserSubscription
+from subscriptions.services.subscription_service import SubscriptionService
 
 
 # Get a list of all valid time zones
@@ -23,6 +26,7 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20, null=True, blank=True)
     last_scheduled_time = models.DateTimeField(null=True, blank=True)
     midnight_utc = models.TimeField(null=True, blank=True)
+    whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
         
     def __str__(self):
         return self.username
@@ -52,6 +56,36 @@ class CustomUser(AbstractUser):
             now = now.astimezone(user_timezone)
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return midnight - timedelta(minutes=5)
+    
+    @property
+    def current_plan(self):
+        """Get user's current subscription plan"""
+        return SubscriptionService.get_user_plan(self)
+    
+    def has_feature(self, feature_name):
+        """Check if user's current plan includes a specific feature"""
+        return SubscriptionService.can_user_access_feature(self, feature_name)
+    
+    def can_send_notification(self, notification_type):
+        """Check if user can send a notification (considering daily limits)"""
+        try:
+            subscription = self.subscription
+            if subscription.is_active:
+                subscription._reset_daily_usage_if_needed()
+                return subscription.notifications_sent_today < subscription.plan.max_notifications_per_day
+        except UserSubscription.DoesNotExist:
+            # Basic plan users get limited notifications
+            return True
+        return False
+    
+    def record_notification_sent(self):
+        """Record that a notification was sent"""
+        try:
+            subscription = self.subscription
+            if subscription.is_active:
+                subscription.increment_usage()
+        except UserSubscription.DoesNotExist:
+            pass
 
 
 class AuthToken(models.Model):
@@ -64,25 +98,26 @@ class AuthToken(models.Model):
 
 
 class UserPreferences(models.Model):
+    NOTIFICATION_METHODS = [
+        ('email', 'Email'),
+        ('sms', 'SMS'),
+        ('whatsapp', 'WhatsApp'),
+    ]
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='preferences')
     
     # Daily Prayer Summary
     daily_prayer_summary_enabled = models.BooleanField(default=True)
     daily_prayer_summary_message_method = models.CharField(
-        max_length=10, 
-        blank=True, 
-        null=True, 
-        choices=[('email', 'Email'), ('sms', 'SMS')], 
+        max_length=10,
+        choices=NOTIFICATION_METHODS,
         default='email'
     )
 
     # Notification Before Prayer Time
     notification_before_prayer_enabled = models.BooleanField(default=True)
     notification_before_prayer = models.CharField(
-        max_length=10, 
-        blank=True, 
-        null=True, 
-        choices=[('email', 'Email'), ('sms', 'SMS')], 
+        max_length=10,
+        choices=NOTIFICATION_METHODS,
         default='sms'
     )
     notification_time_before_prayer = models.IntegerField(
@@ -93,10 +128,16 @@ class UserPreferences(models.Model):
     )
 
     # Adhan Phone Call at Prayer Time
+    ADHAN_METHODS = [
+        ('email', 'Email'),
+        ('sms', 'SMS'),
+        ('call', 'Phone Call'),
+        ('text', 'Text Message'),
+    ]
     adhan_call_enabled = models.BooleanField(default=True)
     adhan_call_method = models.CharField(
-        max_length=10, 
-        choices=[('email', 'Email'), ('sms', 'SMS'), ('call', 'Phone Call')], 
+        max_length=10,
+        choices=ADHAN_METHODS,
         default='call'
     )
 
@@ -127,6 +168,37 @@ class UserPreferences(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s preferences"
+    
+    def clean(self):
+        """Validate preferences against subscription plan"""
+        super().clean()
+        
+        # Validate daily prayer summary method
+        if not SubscriptionService.validate_notification_preference(
+            self.user, 'daily_prayer_summary', self.daily_prayer_summary_message_method
+        ):
+            raise ValidationError({
+                'daily_prayer_summary_message_method': 
+                f'Your current plan does not include {self.get_daily_prayer_summary_message_method_display()} for daily summaries. Please upgrade your plan.'
+            })
+        
+        # Validate pre-adhan notification method
+        if not SubscriptionService.validate_notification_preference(
+            self.user, 'pre_adhan', self.notification_before_prayer
+        ):
+            raise ValidationError({
+                'notification_before_prayer': 
+                f'Your current plan does not include {self.get_notification_before_prayer_display()} for pre-adhan notifications. Please upgrade your plan.'
+            })
+        
+        # Validate adhan call method
+        if not SubscriptionService.validate_notification_preference(
+            self.user, 'adhan_call', self.adhan_call_method
+        ):
+            raise ValidationError({
+                'adhan_call_method': 
+                f'Your current plan does not include {self.get_adhan_call_method_display()} for adhan calls. Please upgrade your plan.'
+            })
 
 
 class Location(models.Model):

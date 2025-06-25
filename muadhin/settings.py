@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'rest_framework_simplejwt',
     'corsheaders',
+    'subscriptions',
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'muadhin.wsgi.application'
 
+# Email template for subscription notifications
+EMAIL_TEMPLATES = {
+    'subscription_activated': 'subscriptions/emails/subscription_activated.html',
+    'subscription_expired': 'subscriptions/emails/subscription_expired.html',
+    'trial_ending': 'subscriptions/emails/trial_ending.html',
+}
 
 # # Database
 # # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

@@ -1,6 +1,9 @@
 from celery import shared_task
 from datetime import date, datetime, timedelta, time
 import pytz
+from subscriptions.models import NotificationUsage
+from subscriptions.services.subscription_service import SubscriptionService
+from subscriptions.services.whatsapp_service import WhatsAppService
 from users.models import UserPreferences, PrayerMethod
 from SalatTracker.models import PrayerTime, DailyPrayer
 import requests
@@ -154,45 +157,146 @@ def send_sms(phone_number, message):
 
 @shared_task
 def send_daily_prayer_message(user_id):
-    """
-    Function to send the daily prayer message to the user.
-    """
-
-    User = get_user_model()  # Get the User model
-
+    """Send daily prayer message respecting subscription limits"""
     try:
-        user_id = User.objects.get(id=user_id)  # Retrieve the User instance
-    except User.DoesNotExist:
-        # Handle the case where the user doesn't exist
-        return
-    
-    # Get the DailyPrayer object for the current day
-    today = date.today()
-    daily_prayer = DailyPrayer.objects.filter(user=user_id, prayer_date=today).first()
-    user_preference = UserPreferences.objects.filter(user=user_id).first()
-
-    if daily_prayer:
-        # Get the prayer times for the current day
+        user = User.objects.get(id=user_id)
+        
+        # Check if user can send notifications
+        if not user.can_send_notification('daily_summary'):
+            return {"status": "skipped", "reason": "Daily limit reached"}
+        
+        daily_prayer = DailyPrayer.objects.filter(user=user, prayer_date=date.today()).first()
+        user_preference = UserPreferences.objects.filter(user=user).first()
+        
+        if not daily_prayer or not user_preference:
+            return {"status": "error", "reason": "Missing data"}
+        
         prayer_times = PrayerTime.objects.filter(daily_prayer=daily_prayer)
+        method = user_preference.daily_prayer_summary_message_method
+        
+        # Check if user's plan supports the chosen method
+        if not SubscriptionService.validate_notification_preference(user, 'daily_prayer_summary', method):
+            # Fall back to email if available
+            if user.has_feature('daily_prayer_summary_email'):
+                method = 'email'
+            else:
+                return {"status": "error", "reason": "Feature not available in current plan"}
+        
+        success = False
+        error_message = None
+        
+        try:
+            if method == 'email':
+                email_daily_prayerTime(user, daily_prayer, prayer_times)
+                daily_prayer.is_email_notified = True
+                success = True
+            
+            elif method == 'whatsapp':
+                if user.whatsapp_number:
+                    whatsapp_service = WhatsAppService()
+                    whatsapp_service.send_daily_prayer_summary(user, prayer_times)
+                    success = True
+                else:
+                    error_message = "WhatsApp number not provided"
+            
+            elif method == 'sms':
+                if user.phone_number:
+                    message = f"Assalamu Alaikum, {user.username}!\n\nToday's prayer times:\n"
+                    for prayer_time in prayer_times:
+                        message += f"{prayer_time.prayer_name}: {prayer_time.prayer_time.strftime('%I:%M %p')}\n"
+                    send_sms(user.phone_number, message)
+                    daily_prayer.is_sms_notified = True
+                    success = True
+                else:
+                    error_message = "Phone number not provided"
+            
+            if success:
+                daily_prayer.save()
+                user.record_notification_sent()
+                
+                # Log the notification
+                NotificationUsage.objects.create(
+                    user=user,
+                    notification_type=method,
+                    success=True
+                )
+                
+                return {"status": "success", "method": method}
+            else:
+                NotificationUsage.objects.create(
+                    user=user,
+                    notification_type=method,
+                    success=False,
+                    error_message=error_message
+                )
+                return {"status": "error", "reason": error_message}
+                
+        except Exception as e:
+            NotificationUsage.objects.create(
+                user=user,
+                notification_type=method,
+                success=False,
+                error_message=str(e)
+            )
+            return {"status": "error", "reason": str(e)}
+            
+    except User.DoesNotExist:
+        return {"status": "error", "reason": "User not found"}
 
-        message = f"Assalamu Alaikum, {user_id.username}!\n\nToday's prayer times are:\n"
-        for prayer_time in prayer_times:
-            message += f"{prayer_time.prayer_name}: {prayer_time.prayer_time.strftime('%I:%M %p')}\n"
 
-        if user_preference.daily_prayer_message_method == 'email':
-            # Send the daily prayer email
-            email_daily_prayerTime(user_id, daily_prayer, prayer_times)
-            # user.email_user('Daily Prayer Times', message)
-            daily_prayer.is_email_notified = True
-            daily_prayer.save()
-        elif user_preference.daily_prayer_message_method == 'sms':
-            send_sms(user_id.phone_number, message)
-            daily_prayer.is_sms_notified = True  # Change this to is_sms_notified
-            daily_prayer.save()
-        # Add other notification methods as needed
-    else:
-        # Fetch and save prayer times for the current day if it doesn't exist
-        fetch_and_save_daily_prayer_times.delay(user_id.id, today.strftime('%d-%m-%Y'))
+# @shared_task
+# def send_daily_prayer_message(user_id):
+#     """
+#     Function to send the daily prayer message to the user.
+#     """
+
+#     User = get_user_model()  # Get the User model
+
+#     try:
+#         user = User.objects.get(id=user_id)  # Retrieve the User instance
+#     except User.DoesNotExist:
+#         # Handle the case where the user doesn't exist
+#         return
+    
+#     # Get the DailyPrayer object for the current day
+#     today = date.today()
+#     daily_prayer = DailyPrayer.objects.filter(user=user, prayer_date=today).first()
+#     user_preference = UserPreferences.objects.filter(user=user).first()
+
+#     # Check subscription permissions
+#     if not user.has_feature('daily_prayer_summary_email') and user_preference.daily_prayer_message_method == 'email':
+#         return  # User plan doesn't allow email summaries
+    
+#     if not user.has_feature('daily_prayer_summary_whatsapp') and user_preference.daily_prayer_message_method == 'whatsapp':
+#         return  # User plan doesn't allow WhatsApp summaries
+
+#     if daily_prayer:
+#         # Get the prayer times for the current day
+#         prayer_times = PrayerTime.objects.filter(daily_prayer=daily_prayer)
+
+#         message = f"Assalamu Alaikum, {user.username}!\n\nToday's prayer times are:\n"
+#         for prayer_time in prayer_times:
+#             message += f"{prayer_time.prayer_name}: {prayer_time.prayer_time.strftime('%I:%M %p')}\n"
+
+#         if user_preference.daily_prayer_message_method == 'email':
+#             # Send the daily prayer email
+#             email_daily_prayerTime(user, daily_prayer, prayer_times)
+#             # user.email_user('Daily Prayer Times', message)
+#             daily_prayer.is_email_notified = True
+#             daily_prayer.save()
+#         elif user_preference.daily_prayer_message_method == 'sms':
+#             send_sms(user.phone_number, message)
+#             daily_prayer.is_sms_notified = True  # Change this to is_sms_notified
+#             daily_prayer.save()
+#         elif user_preference.daily_prayer_message_method == 'whatsapp':    
+#             whatsapp_service = WhatsAppService()
+#             whatsapp_service.send_message(user.whatsapp_number, message)
+#         # Add other notification methods as needed
+#     else:
+#         # Fetch and save prayer times for the current day if it doesn't exist
+#         fetch_and_save_daily_prayer_times.delay(user.id, today.strftime('%d-%m-%Y'))
+
+    
 
 
 def email_daily_prayerTime(user, daily_prayer, prayer_times):
@@ -270,17 +374,100 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
 
 @shared_task
 def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
-    user = User.objects.get(pk=user_id)
-    email = user.email
-    user_preferences = UserPreferences.objects.get(user=user)
-    notification_method = user_preferences.notification_before_prayer
+    """Send pre-adhan notification respecting subscription limits"""
+    try:
+        user = User.objects.get(pk=user_id)
+        
+        # Check if user can send notifications
+        if not user.can_send_notification('pre_adhan'):
+            return {"status": "skipped", "reason": "Daily limit reached"}
+        
+        user_preferences = UserPreferences.objects.get(user=user)
+        method = user_preferences.notification_before_prayer
+        
+        # Check if user's plan supports the chosen method
+        if not SubscriptionService.validate_notification_preference(user, 'pre_adhan', method):
+            # Fall back to email if available
+            if user.has_feature('pre_adhan_email'):
+                method = 'email'
+            else:
+                return {"status": "error", "reason": "Feature not available in current plan"}
+        
+        success = False
+        error_message = None
+        
+        try:
+            if method == 'email':
+                send_pre_prayer_notification_email(user.email, prayer_name, prayer_time)
+                success = True
+            
+            elif method == 'whatsapp':
+                if user.whatsapp_number:
+                    whatsapp_service = WhatsAppService()
+                    whatsapp_service.send_pre_adhan_notification(user, prayer_name, prayer_time)
+                    success = True
+                else:
+                    error_message = "WhatsApp number not provided"
+            
+            elif method == 'sms':
+                if user.phone_number:
+                    message = f'Assalamu Alaikum! Prayer time ({prayer_name}) is approaching at {prayer_time.strftime("%I:%M %p")}.'
+                    send_sms(user.phone_number, message)
+                    success = True
+                else:
+                    error_message = "Phone number not provided"
+            
+            if success:
+                user.record_notification_sent()
+                
+                # Log the notification
+                NotificationUsage.objects.create(
+                    user=user,
+                    notification_type=method,
+                    prayer_name=prayer_name,
+                    success=True
+                )
+                
+                return {"status": "success", "method": method}
+            else:
+                NotificationUsage.objects.create(
+                    user=user,
+                    notification_type=method,
+                    prayer_name=prayer_name,
+                    success=False,
+                    error_message=error_message
+                )
+                return {"status": "error", "reason": error_message}
+                
+        except Exception as e:
+            NotificationUsage.objects.create(
+                user=user,
+                notification_type=method,
+                prayer_name=prayer_name,
+                success=False,
+                error_message=str(e)
+            )
+            return {"status": "error", "reason": str(e)}
+            
+    except (User.DoesNotExist, UserPreferences.DoesNotExist) as e:
+        return {"status": "error", "reason": str(e)}
 
-    if notification_method == 'sms':
-        send_sms(user.phone_number, f'Prayer time ({prayer_name}) is approaching.')
-    elif notification_method == 'email':
-        # send_email(user.email, f'Prayer time ({prayer_name}) is approaching.')
-        send_pre_prayer_notification_email(email, prayer_name, prayer_time)
-    # Add more notification methods as needed
+
+
+
+# @shared_task
+# def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
+#     user = User.objects.get(pk=user_id)
+#     email = user.email
+#     user_preferences = UserPreferences.objects.get(user=user)
+#     notification_method = user_preferences.notification_before_prayer
+
+#     if notification_method == 'sms':
+#         send_sms(user.phone_number, f'Prayer time ({prayer_name}) is approaching.')
+#     elif notification_method == 'email':
+#         # send_email(user.email, f'Prayer time ({prayer_name}) is approaching.')
+#         send_pre_prayer_notification_email(email, prayer_name, prayer_time)
+#     # Add more notification methods as needed
 
 
 @shared_task
@@ -300,15 +487,53 @@ def schedule_phone_calls_for_day(user_id, date):
             
 
 @shared_task
-def make_call_and_play_audio(recipient_phone_number, audio_url):
-    call = twilio_client.calls.create(
-        twiml=f'<Response><Play>{audio_url}</Play></Response>',
-        to=recipient_phone_number,
-        from_=TWILIO_NUMBER
-    )
-    print(f"<<<<<<<<Calling: {TWILIO_NUMBER} with TWILIO_NUMBER>>>>>>>>>: ")
-    return call.sid
-
+def make_call_and_play_audio(recipient_phone_number, audio_url, user_id):
+    """Make adhan call respecting subscription limits"""
+    try:
+        user = User.objects.get(pk=user_id)
+        
+        # Check if user's plan supports audio calls
+        if not user.has_feature('adhan_call_audio'):
+            # Check if text call is available
+            if user.has_feature('adhan_call_text'):
+                # Send text message instead
+                message = "🕌 Adhan - It's time for prayer! Allahu Akbar!"
+                send_sms(recipient_phone_number, message)
+                return {"status": "success", "method": "text_fallback"}
+            else:
+                return {"status": "error", "reason": "Adhan calls not available in current plan"}
+        
+        # Check daily limits
+        if not user.can_send_notification('adhan_call'):
+            return {"status": "skipped", "reason": "Daily limit reached"}
+        
+        # Make the actual call
+        call = twilio_client.calls.create(
+            twiml=f'<Response><Play>{audio_url}</Play></Response>',
+            to=recipient_phone_number,
+            from_=TWILIO_NUMBER
+        )
+        
+        user.record_notification_sent()
+        
+        # Log the notification
+        NotificationUsage.objects.create(
+            user=user,
+            notification_type='call',
+            success=True
+        )
+        
+        return {"status": "success", "call_sid": call.sid}
+        
+    except Exception as e:
+        if 'user_id' in locals():
+            NotificationUsage.objects.create(
+                user=User.objects.get(pk=user_id),
+                notification_type='call',
+                success=False,
+                error_message=str(e)
+            )
+        return {"status": "error", "reason": str(e)}
 
 ##################################################
 

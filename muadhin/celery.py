@@ -42,3 +42,6 @@ app.autodiscover_tasks()
 #         'args': (None,),  # Pass None as the 'sender' argument
 #     },
 # }
+
+# celery -A muadhin worker --loglevel=info
+# celery -A muadhin beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
