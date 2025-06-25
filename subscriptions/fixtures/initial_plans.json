@@ -1,0 +1,45 @@
+[
+    {
+        "model": "subscriptions.subscriptionplan",
+        "pk": 1,
+        "fields": {
+            "name": "Basic - Salah Reminder",
+            "plan_type": "basic",
+            "price": "0.00",
+            "daily_prayer_summary_email": true,
+            "pre_adhan_email": true,
+            "pre_adhan_sms": true
+        }
+    },
+    {
+        "model": "subscriptions.subscriptionplan", 
+        "pk": 2,
+        "fields": {
+            "name": "Plus - Muaddhin",
+            "plan_type": "plus",
+            "price": "9.99",
+            "daily_prayer_summary_email": true,
+            "daily_prayer_summary_whatsapp": true,
+            "pre_adhan_email": true,
+            "pre_adhan_sms": true,
+            "pre_adhan_whatsapp": true,
+            "adhan_call_text": true
+        }
+    },
+    {
+        "model": "subscriptions.subscriptionplan",
+        "pk": 3, 
+        "fields": {
+            "name": "Premium - Qiyam",
+            "plan_type": "premium",
+            "price": "19.99",
+            "daily_prayer_summary_email": true,
+            "daily_prayer_summary_whatsapp": true,
+            "pre_adhan_email": true,
+            "pre_adhan_sms": true,
+            "pre_adhan_whatsapp": true,
+            "adhan_call_text": true,
+            "adhan_call_audio": true
+        }
+    }
+]
