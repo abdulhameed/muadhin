@@ -7,9 +7,22 @@ class UsersConfig(AppConfig):
     name = 'users'
 
     def ready(self):
+        """
+        Import signals when the app is ready.
+        Also create dev admin user if needed.
+        """
+        try:
+            # Import signals to register them
+            import users.signals
+            print("✅ User signals loaded successfully")
+        except Exception as e:
+            print(f"❌ Error loading user signals: {str(e)}")
+        
+        # Create dev admin user
         self.create_dev_admin()
 
     def create_dev_admin(self):
+        """Create development admin user if it doesn't exist"""
         try:
             from django.contrib.auth import get_user_model
             User = get_user_model()

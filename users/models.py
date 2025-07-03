@@ -138,7 +138,7 @@ class UserPreferences(models.Model):
     adhan_call_method = models.CharField(
         max_length=10,
         choices=ADHAN_METHODS,
-        default='call'
+        default='email'
     )
 
     NOTIFICATION_CHOICES = [

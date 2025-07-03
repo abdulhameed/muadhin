@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from subscriptions.services.subscription_service import SubscriptionService
 from .models import UserPreferences, PrayerMethod, PrayerOffset, CustomUser
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -45,13 +47,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
             is_active=True,  # Set is_active to False
         )
-        # user.sex = validated_data.get('sex', '')
-        # user.address = validated_data.get('address', '')
-        # user.city = validated_data.get('city', 'ABUJA')
-        # user.country = validated_data.get('country', 'NIGERIA')
-        # user.timezone = validated_data.get('timezone', 'Africa/Lagos')
-        # user.phone_number = validated_data.get('phone_number', '')
-        # Set other fields
+
         for field in ['sex', 'address', 'city', 'country', 'timezone', 'phone_number']:
             if field in validated_data:
                 setattr(user, field, validated_data[field])
@@ -64,9 +60,103 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
+    """
+    Serializer for UserPreferences with subscription validation
+    """
+    # Add read-only fields to show what plan supports
+    available_daily_summary_methods = serializers.SerializerMethodField()
+    available_pre_adhan_methods = serializers.SerializerMethodField()
+    available_adhan_call_methods = serializers.SerializerMethodField()
+    current_plan = serializers.SerializerMethodField()
+
     class Meta:
         model = UserPreferences
         fields = '__all__'
+        read_only_fields = ['user']
+
+    def get_available_daily_summary_methods(self, obj):
+        """Get available daily summary methods for user's current plan"""
+        user = obj.user
+        available = []
+        for method, _ in UserPreferences.NOTIFICATION_METHODS:
+            if SubscriptionService.validate_notification_preference(user, 'daily_prayer_summary', method):
+                available.append({'value': method, 'label': dict(UserPreferences.NOTIFICATION_METHODS)[method]})
+        return available
+
+    def get_available_pre_adhan_methods(self, obj):
+        """Get available pre-adhan methods for user's current plan"""
+        user = obj.user
+        available = []
+        for method, _ in UserPreferences.NOTIFICATION_METHODS:
+            if SubscriptionService.validate_notification_preference(user, 'pre_adhan', method):
+                available.append({'value': method, 'label': dict(UserPreferences.NOTIFICATION_METHODS)[method]})
+        return available
+
+    def get_available_adhan_call_methods(self, obj):
+        """Get available adhan call methods for user's current plan"""
+        user = obj.user
+        available = []
+        for method, _ in UserPreferences.ADHAN_METHODS:
+            if SubscriptionService.validate_notification_preference(user, 'adhan_call', method):
+                available.append({'value': method, 'label': dict(UserPreferences.ADHAN_METHODS)[method]})
+        return available
+
+    def get_current_plan(self, obj):
+        """Get user's current subscription plan info"""
+        user = obj.user
+        plan = user.current_plan
+        return {
+            'name': plan.name,
+            'type': plan.plan_type,
+            'price': float(plan.price),
+            'max_notifications_per_day': plan.max_notifications_per_day,
+        }
+
+    def validate_daily_prayer_summary_message_method(self, value):
+        """Validate daily prayer summary method against subscription"""
+        user = self.context['request'].user if 'request' in self.context else None
+        if user and not SubscriptionService.validate_notification_preference(user, 'daily_prayer_summary', value):
+            available_methods = []
+            for method, _ in UserPreferences.NOTIFICATION_METHODS:
+                if SubscriptionService.validate_notification_preference(user, 'daily_prayer_summary', method):
+                    available_methods.append(dict(UserPreferences.NOTIFICATION_METHODS)[method])
+            
+            raise serializers.ValidationError(
+                f"Your current plan does not support {dict(UserPreferences.NOTIFICATION_METHODS)[value]} "
+                f"for daily summaries. Available methods: {', '.join(available_methods) or 'None (upgrade required)'}"
+            )
+        return value
+
+    def validate_notification_before_prayer(self, value):
+        """Validate pre-adhan notification method against subscription"""
+        user = self.context['request'].user if 'request' in self.context else None
+        if user and not SubscriptionService.validate_notification_preference(user, 'pre_adhan', value):
+            available_methods = []
+            for method, _ in UserPreferences.NOTIFICATION_METHODS:
+                if SubscriptionService.validate_notification_preference(user, 'pre_adhan', method):
+                    available_methods.append(dict(UserPreferences.NOTIFICATION_METHODS)[method])
+            
+            raise serializers.ValidationError(
+                f"Your current plan does not support {dict(UserPreferences.NOTIFICATION_METHODS)[value]} "
+                f"for pre-adhan notifications. Available methods: {', '.join(available_methods) or 'None (upgrade required)'}"
+            )
+        return value
+
+    def validate_adhan_call_method(self, value):
+        """Validate adhan call method against subscription"""
+        user = self.context['request'].user if 'request' in self.context else None
+        if user and not SubscriptionService.validate_notification_preference(user, 'adhan_call', value):
+            available_methods = []
+            for method, _ in UserPreferences.ADHAN_METHODS:
+                if SubscriptionService.validate_notification_preference(user, 'adhan_call', method):
+                    available_methods.append(dict(UserPreferences.ADHAN_METHODS)[method])
+            
+            raise serializers.ValidationError(
+                f"Your current plan does not support {dict(UserPreferences.ADHAN_METHODS)[value]} "
+                f"for adhan calls. Available methods: {', '.join(available_methods) or 'None (upgrade required)'}"
+            )
+        return value
+
 
 
 # BUG: perform_update and perform_destroy don't belong in serializer
@@ -90,28 +180,33 @@ class PrayerMethodSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    def perform_update(self, serializer):
-        # Get the current authenticated user
-        user = self.context['request'].user
+    # def perform_update(self, serializer):
+    #     # Get the current authenticated user
+    #     user = self.context['request'].user
 
-        # Update the instance with the user instance
-        instance = serializer.save(user=user)
+    #     # Update the instance with the user instance
+    #     instance = serializer.save(user=user)
 
-        return instance
+    #     return instance
 
-    def perform_destroy(self, instance):
-        # Get the current authenticated user
-        user = self.context['request'].user
+    # def perform_destroy(self, instance):
+    #     # Get the current authenticated user
+    #     user = self.context['request'].user
 
-        # Check if the user is the owner of the instance
-        if instance.user != user:
-            raise serializers.ValidationError("You are not authorized to delete this prayer method.")
+    #     # Check if the user is the owner of the instance
+    #     if instance.user != user:
+    #         raise serializers.ValidationError("You are not authorized to delete this prayer method.")
 
-        # Delete the instance
-        instance.delete()
+    #     # Delete the instance
+    #     instance.delete()
 
 
 class PrayerOffsetSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrayerOffset
         fields = '__all__'
+        read_only_fields = ['user']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
