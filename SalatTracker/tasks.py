@@ -233,21 +233,28 @@ def send_sms(phone_number, message):
 def send_daily_prayer_message(user_id):
     """Send daily prayer message respecting subscription limits"""
     try:
-        user = User.objects.get(id=user_id)
+        # Only get the fields we need
+        user = User.objects.select_related('preferences').only(
+            'id', 'username', 'email', 'phone_number', 'whatsapp_number'
+        ).get(id=user_id)
         
-        # Check if user can send notifications
+        # Check if user can send notifications efficiently
         if not user.can_send_notification('daily_summary'):
             return {"status": "skipped", "reason": "Daily limit reached"}
         
-        daily_prayer = DailyPrayer.objects.filter(user=user, prayer_date=date.today()).first()
-        
-        # Ensure user preferences exist
-        user_preference = ensure_user_preferences(user)
+        # Get daily prayer with related prayer times in one query
+        daily_prayer = DailyPrayer.objects.select_related().prefetch_related(
+            'prayer_times'
+        ).filter(user=user, prayer_date=date.today()).first()
         
         if not daily_prayer:
             return {"status": "error", "reason": "No daily prayer data found"}
         
-        prayer_times = PrayerTime.objects.filter(daily_prayer=daily_prayer)
+        # Get prayer times as a list to avoid multiple queries
+        prayer_times = list(daily_prayer.prayer_times.all())
+        
+        # Get user preferences efficiently
+        user_preference = ensure_user_preferences(user)
         method = user_preference.daily_prayer_summary_message_method
         
         # Check if user's plan supports the chosen method

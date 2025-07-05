@@ -132,7 +132,7 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=60,
             conn_health_checks=True,
         )
     }
@@ -144,6 +144,16 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+# Additional Django settings for memory optimization
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB max upload
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5MB max file upload
+
+# Django query optimizations
+# DATABASES['default']['OPTIONS'].update({
+#     'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#     'charset': 'utf8mb4',
+# })
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
