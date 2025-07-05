@@ -13,35 +13,37 @@ app = Celery('muadhin')
 
 
 app.conf.beat_schedule = {
-    # 'schedule_midnight_checks': {
-    #     'task': 'SalatTracker.tasks.schedule_midnight_checks',
-    #     'schedule': crontab(minute='*/2'),  # Run every 2 minutes
-    # },
-
     'check_and_schedule_daily_tasks': {
         'task': 'users.tasks.check_and_schedule_daily_tasks',
-        'schedule': crontab(minute='*/2'),  # Run every 30 minutes
+        'schedule': crontab(minute=0, hour='*/1'),  # Run every 30 minutes
     },
 }
 
+# Memory optimization settings
+app.conf.update(
+    # Worker settings for memory efficiency
+    worker_max_tasks_per_child=100,  # Restart worker after 100 tasks to prevent memory leaks
+    worker_max_memory_per_child=400000,  # Restart worker if it uses more than 400MB (400MB in KB)
+    
+    # Task settings
+    task_acks_late=True,  # Acknowledge tasks only after completion
+    task_reject_on_worker_lost=True,  # Reject tasks if worker dies
+    
+    # Result backend settings (use redis or database)
+    result_expires=3600,  # Results expire after 1 hour
+    
+    # Connection settings
+    broker_connection_retry_on_startup=True,
+    broker_connection_retry=True,
+    
+    # Memory optimization
+    worker_disable_rate_limits=True,  # Disable rate limiting to reduce memory overhead
+    task_compression='gzip',  # Compress task messages
+    result_compression='gzip',  # Compress results
+)
 
-# Using a string here means the worker doesn't have to serialize
-# the configuration object to child processes.
-# - namespace='CELERY' means all celery-related configuration keys
-#   should have a `CELERY_` prefix.
+
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
-
-
-# BEAT_SCHEDULE = {
-#     'setup_periodic_tasks': {
-#         'task': 'users.tasks.setup_periodic_tasks',
-#         'schedule': crontab(minute='*/30'),  # Run every 30 minutes
-#         'args': (None,),  # Pass None as the 'sender' argument
-#     },
-# }
-
-# celery -A muadhin worker --loglevel=info
-# celery -A muadhin beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler

@@ -74,16 +74,22 @@ def setup_basic_plan_action(modeladmin, request, queryset):
         if created:
             messages.success(request, f'✅ Created premium subscription plan: {premium_plan.name}')
 
-        # 3. Fix all users
-        users = User.objects.all()
+        # Fix users in chunks to avoid memory issues
+        chunk_size = 100
+        total_users = User.objects.count()
         fixed_count = 0
         
-        for user in users:
-            user_fixed = False
+        for offset in range(0, total_users, chunk_size):
+            users_chunk = User.objects.select_related(
+                'preferences', 'prayer_method', 'prayer_offset', 'subscription'
+            )[offset:offset + chunk_size]
             
-            # Create UserPreferences if missing
-            if not hasattr(user, 'preferences'):
-                UserPreferences.objects.create(
+            for user in users_chunk:
+                user_fixed = False
+                
+                # Create missing related objects
+                if not hasattr(user, 'preferences'):
+                    UserPreferences.objects.create(
                     user=user,
                     daily_prayer_summary_enabled=True,
                     daily_prayer_summary_message_method='email',
@@ -129,6 +135,10 @@ def setup_basic_plan_action(modeladmin, request, queryset):
 
             if user_fixed:
                 fixed_count += 1
+
+        # Clear Django query cache after each chunk
+        from django.db import connection
+        connection.queries_log.clear()
 
         messages.success(request, f'🎉 Setup completed! Fixed {fixed_count} users with basic plan.')
         

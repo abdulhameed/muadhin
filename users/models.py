@@ -88,6 +88,26 @@ class CustomUser(AbstractUser):
             pass
 
 
+class CustomUserManager(models.Manager):
+    """Custom manager with memory-efficient methods"""
+    
+    def get_users_needing_scheduling(self, cutoff_time):
+        """Get users that need prayer time scheduling"""
+        return self.filter(
+            models.Q(last_scheduled_time__isnull=True) | 
+            models.Q(last_scheduled_time__lt=cutoff_time)
+        ).select_related('preferences').only(
+            'id', 'username', 'timezone', 'last_scheduled_time', 
+            'midnight_utc', 'city', 'country'
+        )
+    
+    def bulk_update_scheduled_time(self, user_ids, scheduled_time):
+        """Efficiently update last_scheduled_time for multiple users"""
+        return self.filter(id__in=user_ids).update(
+            last_scheduled_time=scheduled_time
+        )
+
+
 class AuthToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='auth_token')
     token = models.CharField(max_length=255, unique=True)  # Added unique=True
