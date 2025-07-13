@@ -16,6 +16,7 @@ from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
+from rest_framework.decorators import action
 
 # from django.contrib.auth.models import User
 
@@ -177,8 +178,87 @@ class UserViewSet(viewsets.ModelViewSet):
     
 
 class UserPreferencesViewSet(viewsets.ModelViewSet):
-    queryset = UserPreferences.objects.all()
+    """
+    ViewSet for managing user preferences with proper security and user filtering
+    """
     serializer_class = UserPreferencesSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Only return the current user's preferences"""
+        return UserPreferences.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        """Automatically set the user when creating preferences"""
+        serializer.save(user=self.request.user)
+    
+    def get_object(self):
+        """Get the user's preferences or create if they don't exist"""
+        try:
+            return self.get_queryset().get()
+        except UserPreferences.DoesNotExist:
+            # Auto-create preferences with defaults if they don't exist
+            return UserPreferences.objects.create(
+                user=self.request.user,
+                daily_prayer_summary_enabled=True,
+                daily_prayer_summary_message_method='email',
+                notification_before_prayer_enabled=True,
+                notification_before_prayer='email',
+                notification_time_before_prayer=15,
+                adhan_call_enabled=True,
+                adhan_call_method='email',
+                notification_methods='email',
+            )
+    
+    @action(detail=False, methods=['get'])
+    def my_preferences(self, request):
+        """Get current user's preferences - creates if doesn't exist"""
+        preferences = self.get_object()
+        serializer = self.get_serializer(preferences)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['patch', 'put'])
+    def update_my_preferences(self, request):
+        """Update current user's preferences"""
+        preferences = self.get_object()
+        serializer = self.get_serializer(
+            preferences, 
+            data=request.data, 
+            partial=(request.method == 'PATCH')
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def available_options(self, request):
+        """Get available notification options based on user's subscription plan"""
+        preferences = self.get_object()
+        serializer = self.get_serializer(preferences)
+        
+        # The serializer already includes available options based on subscription
+        return Response({
+            'current_preferences': serializer.data,
+            'available_daily_summary_methods': serializer.data.get('available_daily_summary_methods', []),
+            'available_pre_adhan_methods': serializer.data.get('available_pre_adhan_methods', []),
+            'available_adhan_call_methods': serializer.data.get('available_adhan_call_methods', []),
+            'current_plan': serializer.data.get('current_plan', {}),
+        })
+    
+    def list(self, request):
+        """Override list to return only current user's preferences"""
+        preferences = self.get_object()
+        serializer = self.get_serializer(preferences)
+        return Response([serializer.data])  # Return as list for consistency
+    
+    def retrieve(self, request, pk=None):
+        """Override retrieve to always return current user's preferences"""
+        preferences = self.get_object()
+        serializer = self.get_serializer(preferences)
+        return Response(serializer.data)
 
 
 class PrayerMethodViewSet(viewsets.ModelViewSet):
