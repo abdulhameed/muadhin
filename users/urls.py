@@ -16,7 +16,7 @@ from .api_views import (
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
-router.register(r'user-preferences', UserPreferencesViewSet)
+router.register(r'user-preferences', UserPreferencesViewSet, basename='user-preferences')
 router.register(r'prayer-methods', PrayerMethodViewSet, basename='prayer-method')
 router.register(r'prayer-offsets', PrayerOffsetViewSet)
 

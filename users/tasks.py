@@ -38,7 +38,7 @@ def check_and_schedule_daily_tasks():
     ).values_list('id', flat=True)
     
     # Process users in small chunks to avoid memory issues
-    chunk_size = 50  # Process 50 users at a time
+    chunk_size = 5  # Process 5 users at a time
     
     for i in range(0, len(user_ids_to_process), chunk_size):
         chunk_ids = user_ids_to_process[i:i + chunk_size]

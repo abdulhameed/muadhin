@@ -75,7 +75,7 @@ def setup_basic_plan_action(modeladmin, request, queryset):
             messages.success(request, f'✅ Created premium subscription plan: {premium_plan.name}')
 
         # Fix users in chunks to avoid memory issues
-        chunk_size = 100
+        chunk_size = 5
         total_users = User.objects.count()
         fixed_count = 0
         
