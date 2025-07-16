@@ -3,12 +3,15 @@ from rest_framework import viewsets, generics, permissions
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.urls import reverse
+
+from subscriptions.services.subscription_service import SubscriptionService
 from .permissions import IsOwnerOrReadOnly
 from .models import CustomUser, UserPreferences, PrayerMethod, PrayerOffset, AuthToken
 from .serializers import UserPreferencesSerializer, PrayerMethodSerializer, PrayerOffsetSerializer, CustomUserSerializer
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 from django.conf import settings
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -303,3 +306,433 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     Custom JWT login view that includes user information in the response
     """
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class NotificationSettingsAPIView(APIView):
+    """
+    Comprehensive endpoint for managing all notification settings
+    
+    GET: Returns current notification settings with availability info
+    PATCH: Updates notification settings (partial updates allowed)
+    PUT: Updates all notification settings (full update)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current notification settings with subscription info"""
+        user = request.user
+        
+        # Get or create user preferences
+        preferences = self._get_or_create_preferences(user)
+        
+        # Get subscription info
+        current_plan = SubscriptionService.get_user_plan(user)
+        subscription_info = self._get_subscription_info(user, current_plan)
+        
+        # Get available options for each notification type
+        available_options = self._get_available_options(user)
+        
+        # Build current settings
+        current_settings = {
+            'daily_summary': {
+                'enabled': preferences.daily_prayer_summary_enabled,
+                'method': preferences.daily_prayer_summary_message_method,
+                'description': 'Get today\'s prayer times once per day (sent at morning)',
+                'frequency': 'Once daily'
+            },
+            'pre_adhan_reminders': {
+                'enabled': preferences.notification_before_prayer_enabled,
+                'method': preferences.notification_before_prayer,
+                'timing_minutes': preferences.notification_time_before_prayer,
+                'description': 'Get notified before each prayer time (5 notifications per day)',
+                'frequency': '5 times daily'
+            },
+            'adhan_calls': {
+                'enabled': preferences.adhan_call_enabled,
+                'method': preferences.adhan_call_method,
+                'description': 'Get notified exactly at prayer time (5 notifications per day)',
+                'frequency': '5 times daily'
+            }
+        }
+        
+        return Response({
+            'user_info': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'phone_number': user.phone_number,
+                'whatsapp_number': getattr(user, 'whatsapp_number', None)
+            },
+            'subscription': subscription_info,
+            'current_settings': current_settings,
+            'available_options': available_options,
+            'validation_info': self._get_validation_info(user),
+            'total_daily_notifications': self._calculate_daily_notifications(preferences)
+        })
+    
+    def patch(self, request):
+        """Partially update notification settings"""
+        return self._update_settings(request, partial=True)
+    
+    def put(self, request):
+        """Fully update notification settings"""
+        return self._update_settings(request, partial=False)
+    
+    def _update_settings(self, request, partial=True):
+        """Handle settings updates"""
+        user = request.user
+        preferences = self._get_or_create_preferences(user)
+        
+        # Extract settings from request data
+        settings_data = {}
+        errors = {}
+        warnings = []
+        
+        # Process daily summary settings
+        if 'daily_summary' in request.data:
+            daily_data = request.data['daily_summary']
+            if 'enabled' in daily_data:
+                settings_data['daily_prayer_summary_enabled'] = daily_data['enabled']
+            if 'method' in daily_data:
+                method = daily_data['method']
+                if self._validate_notification_method(user, 'daily_prayer_summary', method):
+                    settings_data['daily_prayer_summary_message_method'] = method
+                else:
+                    errors['daily_summary_method'] = f'Method "{method}" not available in your current plan'
+        
+        # Process pre-adhan reminder settings
+        if 'pre_adhan_reminders' in request.data:
+            pre_adhan_data = request.data['pre_adhan_reminders']
+            if 'enabled' in pre_adhan_data:
+                settings_data['notification_before_prayer_enabled'] = pre_adhan_data['enabled']
+            if 'method' in pre_adhan_data:
+                method = pre_adhan_data['method']
+                if self._validate_notification_method(user, 'pre_adhan', method):
+                    settings_data['notification_before_prayer'] = method
+                else:
+                    errors['pre_adhan_method'] = f'Method "{method}" not available in your current plan'
+            if 'timing_minutes' in pre_adhan_data:
+                timing = pre_adhan_data['timing_minutes']
+                if 1 <= timing <= 60:
+                    settings_data['notification_time_before_prayer'] = timing
+                else:
+                    errors['timing_minutes'] = 'Timing must be between 1 and 60 minutes'
+        
+        # Process adhan call settings
+        if 'adhan_calls' in request.data:
+            adhan_data = request.data['adhan_calls']
+            if 'enabled' in adhan_data:
+                settings_data['adhan_call_enabled'] = adhan_data['enabled']
+            if 'method' in adhan_data:
+                method = adhan_data['method']
+                if self._validate_notification_method(user, 'adhan_call', method):
+                    settings_data['adhan_call_method'] = method
+                else:
+                    errors['adhan_method'] = f'Method "{method}" not available in your current plan'
+        
+        # Return errors if any validation failed
+        if errors:
+            return Response({
+                'success': False,
+                'errors': errors,
+                'message': 'Some settings could not be updated due to validation errors',
+                'available_options': self._get_available_options(user),
+                'upgrade_info': self._get_upgrade_info(user)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update preferences
+        try:
+            serializer = UserPreferencesSerializer(
+                preferences, 
+                data=settings_data, 
+                partial=partial,
+                context={'request': request}
+            )
+            
+            if serializer.is_valid():
+                updated_preferences = serializer.save()
+                
+                # Check for plan limitations and add warnings
+                warnings = self._get_plan_warnings(user, updated_preferences)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Notification settings updated successfully',
+                    'warnings': warnings,
+                    'updated_settings': self._format_current_settings(updated_preferences),
+                    'total_daily_notifications': self._calculate_daily_notifications(updated_preferences),
+                    'next_steps': self._get_next_steps(user, updated_preferences)
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'errors': serializer.errors,
+                    'message': 'Validation failed'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e),
+                'message': 'An error occurred while updating settings'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _get_or_create_preferences(self, user):
+        """Get or create user preferences"""
+        try:
+            return user.preferences
+        except UserPreferences.DoesNotExist:
+            return UserPreferences.objects.create(
+                user=user,
+                daily_prayer_summary_enabled=True,
+                daily_prayer_summary_message_method='email',
+                notification_before_prayer_enabled=True,
+                notification_before_prayer='email',
+                notification_time_before_prayer=15,
+                adhan_call_enabled=True,
+                adhan_call_method='email',
+                notification_methods='email',
+            )
+    
+    def _get_subscription_info(self, user, current_plan):
+        """Get subscription information"""
+        try:
+            subscription = getattr(user, 'subscription', None)
+            if subscription:
+                return {
+                    'plan_name': current_plan.name,
+                    'plan_type': current_plan.plan_type,
+                    'price': float(current_plan.price),
+                    'status': subscription.status,
+                    'max_notifications_per_day': current_plan.max_notifications_per_day,
+                    'features': current_plan.features_list
+                }
+        except:
+            pass
+        
+        return {
+            'plan_name': current_plan.name,
+            'plan_type': current_plan.plan_type,
+            'price': float(current_plan.price),
+            'status': 'basic',
+            'max_notifications_per_day': current_plan.max_notifications_per_day,
+            'features': current_plan.features_list
+        }
+    
+    def _get_available_options(self, user):
+        """Get available notification options based on subscription"""
+        daily_summary_options = []
+        pre_adhan_options = []
+        adhan_call_options = []
+        
+        # Check daily summary options
+        for method, label in UserPreferences.NOTIFICATION_METHODS:
+            is_available = SubscriptionService.validate_notification_preference(
+                user, 'daily_prayer_summary', method
+            )
+            daily_summary_options.append({
+                'value': method,
+                'label': label,
+                'available': is_available,
+                'icon': self._get_method_icon(method),
+                'upgrade_required': not is_available
+            })
+        
+        # Check pre-adhan options
+        for method, label in UserPreferences.NOTIFICATION_METHODS:
+            is_available = SubscriptionService.validate_notification_preference(
+                user, 'pre_adhan', method
+            )
+            pre_adhan_options.append({
+                'value': method,
+                'label': label,
+                'available': is_available,
+                'icon': self._get_method_icon(method),
+                'upgrade_required': not is_available
+            })
+        
+        # Check adhan call options
+        for method, label in UserPreferences.ADHAN_METHODS:
+            is_available = SubscriptionService.validate_notification_preference(
+                user, 'adhan_call', method
+            )
+            adhan_call_options.append({
+                'value': method,
+                'label': label,
+                'available': is_available,
+                'icon': self._get_method_icon(method),
+                'upgrade_required': not is_available
+            })
+        
+        return {
+            'daily_summary': daily_summary_options,
+            'pre_adhan_reminders': pre_adhan_options,
+            'adhan_calls': adhan_call_options,
+            'timing_options': [
+                {'value': 5, 'label': '5 minutes before'},
+                {'value': 10, 'label': '10 minutes before'},
+                {'value': 15, 'label': '15 minutes before'},
+                {'value': 20, 'label': '20 minutes before'},
+                {'value': 30, 'label': '30 minutes before'},
+                {'value': 45, 'label': '45 minutes before'},
+                {'value': 60, 'label': '1 hour before'},
+            ]
+        }
+    
+    def _validate_notification_method(self, user, notification_type, method):
+        """Validate if user can use this notification method"""
+        return SubscriptionService.validate_notification_preference(
+            user, notification_type, method
+        )
+    
+    def _get_method_icon(self, method):
+        """Get icon for notification method"""
+        icons = {
+            'email': '📧',
+            'sms': '📱',
+            'whatsapp': '💬',
+            'call': '📞',
+            'text': '📝'
+        }
+        return icons.get(method, '❓')
+    
+    def _calculate_daily_notifications(self, preferences):
+        """Calculate total daily notifications"""
+        total = 0
+        
+        if preferences.daily_prayer_summary_enabled:
+            total += 1  # Daily summary once per day
+        
+        if preferences.notification_before_prayer_enabled:
+            total += 5  # Pre-adhan for 5 prayers
+        
+        if preferences.adhan_call_enabled:
+            total += 5  # Adhan calls for 5 prayers
+        
+        return {
+            'total': total,
+            'breakdown': {
+                'daily_summary': 1 if preferences.daily_prayer_summary_enabled else 0,
+                'pre_adhan': 5 if preferences.notification_before_prayer_enabled else 0,
+                'adhan_calls': 5 if preferences.adhan_call_enabled else 0
+            }
+        }
+    
+    def _format_current_settings(self, preferences):
+        """Format current settings for response"""
+        return {
+            'daily_summary': {
+                'enabled': preferences.daily_prayer_summary_enabled,
+                'method': preferences.daily_prayer_summary_message_method,
+                'icon': self._get_method_icon(preferences.daily_prayer_summary_message_method)
+            },
+            'pre_adhan_reminders': {
+                'enabled': preferences.notification_before_prayer_enabled,
+                'method': preferences.notification_before_prayer,
+                'timing_minutes': preferences.notification_time_before_prayer,
+                'icon': self._get_method_icon(preferences.notification_before_prayer)
+            },
+            'adhan_calls': {
+                'enabled': preferences.adhan_call_enabled,
+                'method': preferences.adhan_call_method,
+                'icon': self._get_method_icon(preferences.adhan_call_method)
+            }
+        }
+    
+    def _get_plan_warnings(self, user, preferences):
+        """Get warnings about plan limitations"""
+        warnings = []
+        current_plan = SubscriptionService.get_user_plan(user)
+        
+        # Check if user is using basic plan with limitations
+        if current_plan.plan_type == 'basic':
+            if preferences.daily_prayer_summary_message_method != 'email':
+                warnings.append('Daily summary will use email fallback (Basic plan limitation)')
+            if preferences.notification_before_prayer != 'email':
+                warnings.append('Pre-adhan reminders will use email fallback (Basic plan limitation)')
+            if preferences.adhan_call_method not in ['email', 'text']:
+                warnings.append('Adhan calls will use email fallback (Basic plan limitation)')
+        
+        return warnings
+    
+    def _get_validation_info(self, user):
+        """Get validation information for the frontend"""
+        current_plan = SubscriptionService.get_user_plan(user)
+        
+        return {
+            'plan_type': current_plan.plan_type,
+            'max_daily_notifications': current_plan.max_notifications_per_day,
+            'contact_info_required': {
+                'email': bool(user.email),
+                'phone_number': bool(user.phone_number),
+                'whatsapp_number': bool(getattr(user, 'whatsapp_number', None))
+            },
+            'contact_info_missing': {
+                'phone_number': not user.phone_number,
+                'whatsapp_number': not getattr(user, 'whatsapp_number', None)
+            }
+        }
+    
+    def _get_upgrade_info(self, user):
+        """Get upgrade information"""
+        current_plan = SubscriptionService.get_user_plan(user)
+        
+        if current_plan.plan_type == 'basic':
+            return {
+                'suggested_plan': 'plus',
+                'benefits': [
+                    'WhatsApp notifications for daily summary',
+                    'SMS and WhatsApp for pre-adhan reminders',
+                    'Text message adhan calls',
+                    'Increased daily notification limit'
+                ],
+                'upgrade_url': '/api/subscriptions/subscribe/',
+                'message': 'Upgrade to Plus plan to unlock more notification methods'
+            }
+        elif current_plan.plan_type == 'plus':
+            return {
+                'suggested_plan': 'premium',
+                'benefits': [
+                    'Audio adhan calls',
+                    'Custom adhan sounds',
+                    'Unlimited daily notifications',
+                    'Priority support'
+                ],
+                'upgrade_url': '/api/subscriptions/subscribe/',
+                'message': 'Upgrade to Premium for the complete experience'
+            }
+        
+        return None
+    
+    def _get_next_steps(self, user, preferences):
+        """Get suggested next steps for user"""
+        steps = []
+        
+        # Check for missing contact info
+        if preferences.notification_before_prayer == 'sms' and not user.phone_number:
+            steps.append({
+                'action': 'add_phone_number',
+                'message': 'Add phone number to receive SMS notifications',
+                'url': '/api/users/profile/'
+            })
+        
+        if preferences.daily_prayer_summary_message_method == 'whatsapp' and not getattr(user, 'whatsapp_number', None):
+            steps.append({
+                'action': 'add_whatsapp_number',
+                'message': 'Add WhatsApp number to receive WhatsApp notifications',
+                'url': '/api/users/profile/'
+            })
+        
+        # Suggest testing notifications
+        if any([preferences.daily_prayer_summary_enabled, 
+                preferences.notification_before_prayer_enabled, 
+                preferences.adhan_call_enabled]):
+            steps.append({
+                'action': 'test_notifications',
+                'message': 'Test your notification settings',
+                'url': '/api/notifications/test/'
+            })
+        
+        return steps
+
+

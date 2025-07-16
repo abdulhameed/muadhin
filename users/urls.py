@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api_views import (
+    NotificationSettingsAPIView,
     ResendActivationEmailView,
     UserPreferencesViewSet, 
     PrayerMethodViewSet, 
@@ -29,4 +30,5 @@ urlpatterns = [
     path('api/reset-password/<str:token>/', PasswordResetConfirmView.as_view(), name='reset-password-confirm'),
     path('create-admin/', create_admin_view, name='create_admin'),
     path('api/login/', CustomTokenObtainPairView.as_view(), name='custom_token_obtain_pair'),
+    path('notifications/settings/', NotificationSettingsAPIView.as_view(), name='notification-settings'),
 ]
