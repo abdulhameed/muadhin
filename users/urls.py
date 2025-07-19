@@ -34,4 +34,4 @@ urlpatterns = [
     path('notifications/settings/', NotificationSettingsAPIView.as_view(), name='notification-settings'),
     path('profile/settings/', ProfileSettingsAPIView.as_view(), name='profile-settings'),
 ]
-# git add . && git commit -m "Add user management API endpoints and router configuration" && git push origin merge-supa-render
+# 
