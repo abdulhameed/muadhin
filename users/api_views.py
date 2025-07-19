@@ -736,3 +736,396 @@ class NotificationSettingsAPIView(APIView):
         return steps
 
 
+class ProfileSettingsAPIView(APIView):
+    """
+    Comprehensive endpoint for managing all user profile settings
+    
+    GET: Returns current profile settings (location, contacts, preferences)
+    PATCH: Updates profile settings (partial updates allowed)
+    PUT: Updates all profile settings (full update)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current profile settings"""
+        user = request.user
+        
+        # Get related objects
+        preferences = self._get_or_create_preferences(user)
+        prayer_method = self._get_or_create_prayer_method(user)
+        prayer_offset = self._get_or_create_prayer_offset(user)
+        
+        # Build response
+        return Response({
+            'user_info': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            },
+            'location_settings': {
+                'city': user.city,
+                'country': user.country,
+                'timezone': user.timezone,
+                'available_timezones': self._get_timezone_options()
+            },
+            'calculation_method': {
+                'current_method': {
+                    'id': prayer_method.sn,
+                    'name': prayer_method.name,
+                    'display_name': prayer_method.method_name
+                },
+                'available_methods': self._get_calculation_methods()
+            },
+            'reminder_settings': {
+                'interval_minutes': preferences.notification_time_before_prayer,
+                'available_intervals': [5, 10, 15, 20, 30, 45, 60]
+            },
+            'contact_information': {
+                'phone_number': user.phone_number,
+                'whatsapp_number': getattr(user, 'whatsapp_number', None),
+                'twitter_handle': None,  # Add this field to CustomUser if needed
+                'sms_number': user.phone_number,  # Usually same as phone
+                'call_number': user.phone_number   # Usually same as phone
+            },
+            'display_preferences': {
+                'show_last_third': getattr(preferences, 'show_last_third', False),  # Add this field if needed
+            },
+            'prayer_offsets': {
+                'imsak': prayer_offset.imsak,
+                'fajr': prayer_offset.fajr,
+                'sunrise': prayer_offset.sunrise,
+                'dhuhr': prayer_offset.dhuhr,
+                'asr': prayer_offset.asr,
+                'maghrib': prayer_offset.maghrib,
+                'sunset': prayer_offset.sunset,
+                'isha': prayer_offset.isha,
+                'midnight': prayer_offset.midnight
+            }
+        })
+    
+    def patch(self, request):
+        """Partially update profile settings"""
+        return self._update_settings(request, partial=True)
+    
+    def put(self, request):
+        """Fully update profile settings"""
+        return self._update_settings(request, partial=False)
+    
+    def _update_settings(self, request, partial=True):
+        """Handle settings updates"""
+        user = request.user
+        errors = {}
+        updated_sections = []
+        
+        # Get related objects
+        preferences = self._get_or_create_preferences(user)
+        prayer_method = self._get_or_create_prayer_method(user)
+        prayer_offset = self._get_or_create_prayer_offset(user)
+        
+        try:
+            # Update location settings
+            if 'location_settings' in request.data:
+                location_data = request.data['location_settings']
+                location_errors = self._update_location_settings(user, location_data)
+                if location_errors:
+                    errors['location_settings'] = location_errors
+                else:
+                    updated_sections.append('location')
+            
+            # Update calculation method
+            if 'calculation_method' in request.data:
+                method_data = request.data['calculation_method']
+                method_errors = self._update_calculation_method(prayer_method, method_data)
+                if method_errors:
+                    errors['calculation_method'] = method_errors
+                else:
+                    updated_sections.append('calculation_method')
+            
+            # Update reminder settings
+            if 'reminder_settings' in request.data:
+                reminder_data = request.data['reminder_settings']
+                reminder_errors = self._update_reminder_settings(preferences, reminder_data)
+                if reminder_errors:
+                    errors['reminder_settings'] = reminder_errors
+                else:
+                    updated_sections.append('reminder_settings')
+            
+            # Update contact information
+            if 'contact_information' in request.data:
+                contact_data = request.data['contact_information']
+                contact_errors = self._update_contact_information(user, contact_data)
+                if contact_errors:
+                    errors['contact_information'] = contact_errors
+                else:
+                    updated_sections.append('contact_information')
+            
+            # Update display preferences
+            if 'display_preferences' in request.data:
+                display_data = request.data['display_preferences']
+                display_errors = self._update_display_preferences(preferences, display_data)
+                if display_errors:
+                    errors['display_preferences'] = display_errors
+                else:
+                    updated_sections.append('display_preferences')
+            
+            # Update prayer offsets
+            if 'prayer_offsets' in request.data:
+                offset_data = request.data['prayer_offsets']
+                offset_errors = self._update_prayer_offsets(prayer_offset, offset_data)
+                if offset_errors:
+                    errors['prayer_offsets'] = offset_errors
+                else:
+                    updated_sections.append('prayer_offsets')
+            
+            # Return errors if any validation failed
+            if errors:
+                return Response({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Some settings could not be updated due to validation errors'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Save all changes
+            user.save()
+            preferences.save()
+            prayer_method.save()
+            prayer_offset.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Profile settings updated successfully',
+                'updated_sections': updated_sections,
+                'settings': self._build_current_settings(user, preferences, prayer_method, prayer_offset)
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e),
+                'message': 'An error occurred while updating settings'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _update_location_settings(self, user, location_data):
+        """Update location settings"""
+        errors = {}
+        
+        if 'city' in location_data:
+            city = location_data['city'].strip()
+            if len(city) < 2:
+                errors['city'] = 'City must be at least 2 characters long'
+            else:
+                user.city = city
+        
+        if 'country' in location_data:
+            country = location_data['country'].strip()
+            if len(country) < 2:
+                errors['country'] = 'Country must be at least 2 characters long'
+            else:
+                user.country = country
+        
+        if 'timezone' in location_data:
+            timezone = location_data['timezone']
+            if timezone not in pytz.all_timezones:
+                errors['timezone'] = 'Invalid timezone'
+            else:
+                user.timezone = timezone
+        
+        return errors
+    
+    def _update_calculation_method(self, prayer_method, method_data):
+        """Update prayer calculation method"""
+        errors = {}
+        
+        if 'method_id' in method_data:
+            method_id = method_data['method_id']
+            valid_methods = dict(PrayerMethod.METHOD_CHOICES)
+            
+            if method_id not in valid_methods:
+                errors['method_id'] = 'Invalid calculation method'
+            else:
+                prayer_method.sn = method_id
+                prayer_method.name = valid_methods[method_id]
+        
+        return errors
+    
+    def _update_reminder_settings(self, preferences, reminder_data):
+        """Update reminder settings"""
+        errors = {}
+        
+        if 'interval_minutes' in reminder_data:
+            interval = reminder_data['interval_minutes']
+            if not isinstance(interval, int) or interval < 1 or interval > 60:
+                errors['interval_minutes'] = 'Interval must be between 1 and 60 minutes'
+            else:
+                preferences.notification_time_before_prayer = interval
+        
+        return errors
+    
+    def _update_contact_information(self, user, contact_data):
+        """Update contact information"""
+        errors = {}
+        
+        if 'phone_number' in contact_data:
+            phone = contact_data['phone_number']
+            if phone and not self._validate_phone_number(phone):
+                errors['phone_number'] = 'Invalid phone number format'
+            else:
+                user.phone_number = phone
+        
+        if 'whatsapp_number' in contact_data:
+            whatsapp = contact_data['whatsapp_number']
+            if whatsapp and not self._validate_phone_number(whatsapp):
+                errors['whatsapp_number'] = 'Invalid WhatsApp number format'
+            else:
+                user.whatsapp_number = whatsapp
+        
+        # Add twitter_handle field to CustomUser model if needed
+        if 'twitter_handle' in contact_data:
+            twitter = contact_data['twitter_handle']
+            if twitter and not self._validate_twitter_handle(twitter):
+                errors['twitter_handle'] = 'Invalid Twitter handle format'
+            # else:
+            #     user.twitter_handle = twitter  # Add this field to model
+        
+        return errors
+    
+    def _update_display_preferences(self, preferences, display_data):
+        """Update display preferences"""
+        errors = {}
+        
+        if 'show_last_third' in display_data:
+            show_last_third = display_data['show_last_third']
+            if not isinstance(show_last_third, bool):
+                errors['show_last_third'] = 'Must be a boolean value'
+            # else:
+            #     preferences.show_last_third = show_last_third  # Add this field to model
+        
+        return errors
+    
+    def _update_prayer_offsets(self, prayer_offset, offset_data):
+        """Update prayer time offsets"""
+        errors = {}
+        valid_prayers = ['imsak', 'fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'sunset', 'isha', 'midnight']
+        
+        for prayer in valid_prayers:
+            if prayer in offset_data:
+                offset_value = offset_data[prayer]
+                if not isinstance(offset_value, int) or offset_value < -60 or offset_value > 60:
+                    errors[prayer] = 'Offset must be between -60 and 60 minutes'
+                else:
+                    setattr(prayer_offset, prayer, offset_value)
+        
+        return errors
+    
+    def _validate_phone_number(self, phone):
+        """Validate phone number format"""
+        if not phone:
+            return True  # Allow empty phone numbers
+        
+        # Basic validation - adjust regex as needed
+        import re
+        pattern = r'^\+?[\d\s\-\(\)]{8,20}$'
+        return bool(re.match(pattern, phone))
+    
+    def _validate_twitter_handle(self, handle):
+        """Validate Twitter handle format"""
+        if not handle:
+            return True
+        
+        import re
+        # Twitter handle validation
+        pattern = r'^@?[A-Za-z0-9_]{1,15}$'
+        return bool(re.match(pattern, handle))
+    
+    def _get_or_create_preferences(self, user):
+        """Get or create user preferences"""
+        try:
+            return user.preferences
+        except UserPreferences.DoesNotExist:
+            return UserPreferences.objects.create(
+                user=user,
+                daily_prayer_summary_enabled=True,
+                daily_prayer_summary_message_method='email',
+                notification_before_prayer_enabled=True,
+                notification_before_prayer='email',
+                notification_time_before_prayer=15,
+                adhan_call_enabled=True,
+                adhan_call_method='email'
+            )
+    
+    def _get_or_create_prayer_method(self, user):
+        """Get or create prayer method"""
+        try:
+            return user.prayer_method
+        except PrayerMethod.DoesNotExist:
+            return PrayerMethod.objects.create(
+                user=user,
+                sn=1,
+                name='Muslim World League'
+            )
+    
+    def _get_or_create_prayer_offset(self, user):
+        """Get or create prayer offset"""
+        try:
+            return user.prayer_offset
+        except PrayerOffset.DoesNotExist:
+            return PrayerOffset.objects.create(
+                user=user,
+                imsak=0, fajr=0, sunrise=0, dhuhr=0, asr=0,
+                maghrib=0, sunset=0, isha=0, midnight=0
+            )
+    
+    def _get_timezone_options(self):
+        """Get available timezone options"""
+        # Common timezones - you can expand this list
+        common_timezones = [
+            'Africa/Lagos',
+            'Africa/Cairo',
+            'Asia/Dubai',
+            'Asia/Karachi',
+            'Asia/Jakarta',
+            'Europe/London',
+            'America/New_York',
+            'America/Los_Angeles'
+        ]
+        
+        return [
+            {'value': tz, 'label': tz.replace('_', ' ')}
+            for tz in common_timezones
+        ]
+    
+    def _get_calculation_methods(self):
+        """Get available calculation methods"""
+        return [
+            {'id': method_id, 'name': method_name}
+            for method_id, method_name in PrayerMethod.METHOD_CHOICES
+        ]
+    
+    def _build_current_settings(self, user, preferences, prayer_method, prayer_offset):
+        """Build current settings response"""
+        return {
+            'location': {
+                'city': user.city,
+                'country': user.country,
+                'timezone': user.timezone
+            },
+            'calculation_method': {
+                'id': prayer_method.sn,
+                'name': prayer_method.method_name
+            },
+            'reminder_interval': preferences.notification_time_before_prayer,
+            'contacts': {
+                'phone_number': user.phone_number,
+                'whatsapp_number': getattr(user, 'whatsapp_number', None)
+            },
+            'prayer_offsets': {
+                'fajr': prayer_offset.fajr,
+                'dhuhr': prayer_offset.dhuhr,
+                'asr': prayer_offset.asr,
+                'maghrib': prayer_offset.maghrib,
+                'isha': prayer_offset.isha
+            }
+        }
+# 
