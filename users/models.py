@@ -27,6 +27,7 @@ class CustomUser(AbstractUser):
     last_scheduled_time = models.DateTimeField(null=True, blank=True)
     midnight_utc = models.TimeField(null=True, blank=True)
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
+    twitter_handle = models.CharField(max_length=16, blank=True, null=True)
         
     def __str__(self):
         return self.username
@@ -173,6 +174,8 @@ class UserPreferences(models.Model):
         null=True,
     )
     utc_time_for_1159 = models.TimeField(null=True, blank=True)
+    show_last_third = models.BooleanField(default=False)
+    # git add . && git commit -m "Add user preferences model with timezone handling and validation"
 
     def save(self, *args, **kwargs):
         # Calculate and store UTC time for 11:59 AM in the user's timezone
