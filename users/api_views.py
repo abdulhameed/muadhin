@@ -3,6 +3,8 @@ from rest_framework import viewsets, generics, permissions
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.urls import reverse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from subscriptions.services.subscription_service import SubscriptionService
 from .permissions import IsOwnerOrReadOnly
@@ -13,6 +15,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.conf import settings
+import pytz
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from django.http import HttpResponse
@@ -1128,4 +1131,174 @@ class ProfileSettingsAPIView(APIView):
                 'isha': prayer_offset.isha
             }
         }
-# 
+    
+
+class TimezonesAPIView(APIView):
+    """
+    API endpoint to get all available timezones
+    Cached for 24 hours since timezones rarely change
+    """
+    permission_classes = [AllowAny]  # Public endpoint
+    
+    @method_decorator(cache_page(60 * 60 * 24))  # Cache for 24 hours
+    def get(self, request):
+        """Get all available timezones grouped by continent"""
+        
+        # Get filter parameter
+        filter_type = request.query_params.get('filter', 'common')  # 'all', 'common', 'continent'
+        continent = request.query_params.get('continent', None)
+        
+        if filter_type == 'all':
+            timezones = self._get_all_timezones()
+        elif filter_type == 'continent' and continent:
+            timezones = self._get_timezones_by_continent(continent)
+        else:  # default to common
+            timezones = self._get_common_timezones()
+        
+        return Response({
+            'timezones': timezones,
+            'total_count': len(timezones),
+            'filter_applied': filter_type,
+            'available_filters': ['all', 'common', 'continent'],
+            'available_continents': self._get_continents()
+        })
+    
+    def _get_common_timezones(self):
+        """Get commonly used timezones"""
+        common_zones = [
+            # Africa
+            'Africa/Lagos', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Nairobi',
+            'Africa/Casablanca', 'Africa/Tunis', 'Africa/Algiers', 'Africa/Addis_Ababa',
+            
+            # Asia
+            'Asia/Dubai', 'Asia/Karachi', 'Asia/Kolkata', 'Asia/Jakarta',
+            'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Seoul', 'Asia/Singapore',
+            'Asia/Bangkok', 'Asia/Manila', 'Asia/Riyadh', 'Asia/Tehran',
+            
+            # Europe
+            'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome',
+            'Europe/Madrid', 'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Vienna',
+            
+            # Americas
+            'America/New_York', 'America/Los_Angeles', 'America/Chicago', 'America/Denver',
+            'America/Toronto', 'America/Vancouver', 'America/Mexico_City', 'America/Sao_Paulo',
+            
+            # Others
+            'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+        ]
+        
+        return [
+            {
+                'value': tz,
+                'label': self._format_timezone_label(tz),
+                'continent': tz.split('/')[0] if '/' in tz else 'Other',
+                'city': tz.split('/')[-1].replace('_', ' ') if '/' in tz else tz,
+                'utc_offset': self._get_utc_offset(tz)
+            }
+            for tz in common_zones
+        ]
+    
+    def _get_all_timezones(self):
+        """Get all available timezones"""
+        all_zones = list(pytz.all_timezones)
+        
+        return [
+            {
+                'value': tz,
+                'label': self._format_timezone_label(tz),
+                'continent': tz.split('/')[0] if '/' in tz else 'Other',
+                'city': tz.split('/')[-1].replace('_', ' ') if '/' in tz else tz,
+                'utc_offset': self._get_utc_offset(tz)
+            }
+            for tz in sorted(all_zones)
+        ]
+    
+    def _get_timezones_by_continent(self, continent):
+        """Get timezones for a specific continent"""
+        continent_zones = [
+            tz for tz in pytz.all_timezones 
+            if tz.startswith(f"{continent}/")
+        ]
+        
+        return [
+            {
+                'value': tz,
+                'label': self._format_timezone_label(tz),
+                'continent': continent,
+                'city': tz.split('/')[-1].replace('_', ' '),
+                'utc_offset': self._get_utc_offset(tz)
+            }
+            for tz in sorted(continent_zones)
+        ]
+    
+    def _get_continents(self):
+        """Get list of available continents"""
+        continents = set()
+        for tz in pytz.all_timezones:
+            if '/' in tz:
+                continent = tz.split('/')[0]
+                continents.add(continent)
+        
+        return sorted(list(continents))
+    
+    def _format_timezone_label(self, timezone):
+        """Format timezone for display"""
+        if '/' not in timezone:
+            return timezone
+        
+        parts = timezone.split('/')
+        continent = parts[0]
+        city = parts[-1].replace('_', ' ')
+        
+        # Add UTC offset for better UX
+        utc_offset = self._get_utc_offset(timezone)
+        
+        return f"{city} ({continent}) - UTC{utc_offset}"
+    
+    def _get_utc_offset(self, timezone):
+        """Get current UTC offset for timezone"""
+        try:
+            from datetime import datetime
+            import pytz
+            
+            tz = pytz.timezone(timezone)
+            now = datetime.now(tz)
+            offset = now.strftime('%z')
+            
+            if offset:
+                # Format as +05:30 or -08:00
+                return f"{offset[:3]}:{offset[3:]}"
+            return "+00:00"
+        except:
+            return "+00:00"
+
+
+# Add this endpoint for just getting user's current timezone info
+class CurrentTimezoneAPIView(APIView):
+    """Get current user's timezone information"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        try:
+            import pytz
+            from datetime import datetime
+            
+            user_tz = pytz.timezone(user.timezone)
+            now = datetime.now(user_tz)
+            
+            return Response({
+                'current_timezone': user.timezone,
+                'formatted_name': user.timezone.replace('_', ' '),
+                'continent': user.timezone.split('/')[0] if '/' in user.timezone else 'Other',
+                'city': user.timezone.split('/')[-1].replace('_', ' ') if '/' in user.timezone else user.timezone,
+                'current_time': now.strftime('%Y-%m-%d %H:%M:%S'),
+                'utc_offset': now.strftime('%z'),
+                'is_dst': now.dst().total_seconds() != 0 if now.dst() else False
+            })
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'current_timezone': user.timezone
+            }, status=500)

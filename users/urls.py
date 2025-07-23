@@ -1,9 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api_views import (
+    CurrentTimezoneAPIView,
     NotificationSettingsAPIView,
     ProfileSettingsAPIView,
     ResendActivationEmailView,
+    TimezonesAPIView,
     UserPreferencesViewSet, 
     PrayerMethodViewSet, 
     PrayerOffsetViewSet, 
@@ -33,5 +35,8 @@ urlpatterns = [
     path('api/login/', CustomTokenObtainPairView.as_view(), name='custom_token_obtain_pair'),
     path('notifications/settings/', NotificationSettingsAPIView.as_view(), name='notification-settings'),
     path('profile/settings/', ProfileSettingsAPIView.as_view(), name='profile-settings'),
+    path('timezones/', TimezonesAPIView.as_view(), name='timezones'),
+    path('timezone/current/', CurrentTimezoneAPIView.as_view(), name='current-timezone'),
+
 ]
 # 
