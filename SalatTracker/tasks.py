@@ -17,6 +17,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django_mailgun_mime.backends import MailgunMIMEBackend
 from django.utils.dateparse import parse_time
+from communications.services.notification_service import NotificationService
 
 
 TWILIO_SID = settings.TWILIO_ACCOUNT_SID
@@ -217,16 +218,52 @@ def fetch_and_save_daily_prayer_times(user_id, date):
 
 def send_sms(phone_number, message):
     """
-    Helper function to send an SMS using Twilio, disabled for costing too much on testing.
+    Helper function to send an SMS using the new multi-provider system.
+    This maintains the same signature as before but now automatically
+    selects the best provider based on the user's country.
     """
-    # twilio_client.messages.create(
-    #     body=message,
-    #     from_=TWILIO_NUMBER,
-    #     to=phone_number
-    # )
-    print(f"<<<<<<<<Fake Texting: {phone_number} From {TWILIO_NUMBER} with TWILIO>>>>>>>>>: ")
-    # print(f"SID: {message.sid} Status: {message.status}")
-    # print(message.sid)
+    # Since we don't have user context here, we need to find the user by phone number
+    # or pass the user object directly. Let's update callers to pass user instead.
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        # Try to find user by phone number
+        user = User.objects.filter(phone_number=phone_number).first()
+        if not user:
+            # Fallback: create a minimal user object for provider selection
+            user = type('MockUser', (), {
+                'phone_number': phone_number,
+                'country': 'US',  # Default country
+                'whatsapp_number': None
+            })()
+        
+        result = NotificationService.send_sms(user, message, log_usage=True)
+        
+        if result.success:
+            print(f"✅ SMS sent via {result.provider_name}: {result.message_id}")
+        else:
+            print(f"❌ SMS failed: {result.error_message}")
+            
+        return result
+        
+    except Exception as e:
+        print(f"❌ SMS error: {str(e)}")
+        return None
+# 
+
+# def send_sms(phone_number, message):
+#     """
+#     Helper function to send an SMS using Twilio, disabled for costing too much on testing.
+#     """
+#     # twilio_client.messages.create(
+#     #     body=message,
+#     #     from_=TWILIO_NUMBER,
+#     #     to=phone_number
+#     # )
+#     print(f"<<<<<<<<Fake Texting: {phone_number} From {TWILIO_NUMBER} with TWILIO>>>>>>>>>: ")
+#     # print(f"SID: {message.sid} Status: {message.status}")
+#     # print(message.sid)
 
 
 @shared_task
