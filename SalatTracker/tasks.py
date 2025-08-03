@@ -250,7 +250,7 @@ def send_sms(phone_number, message):
     except Exception as e:
         print(f"❌ SMS error: {str(e)}")
         return None
-# 
+ 
 
 # def send_sms(phone_number, message):
 #     """
@@ -558,7 +558,7 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
 
 @shared_task
 def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
-    """Send pre-adhan notification respecting subscription limits"""
+    """Send pre-adhan notification using the new provider system"""
     try:
         user = User.objects.get(pk=user_id)
         
@@ -566,13 +566,11 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
         if not user.can_send_notification('pre_adhan'):
             return {"status": "skipped", "reason": "Daily limit reached"}
         
-        # Ensure user preferences exist
         user_preferences = ensure_user_preferences(user)
         method = user_preferences.notification_before_prayer
         
         # Check if user's plan supports the chosen method
         if not SubscriptionService.validate_notification_preference(user, 'pre_adhan', method):
-            # Fall back to email if available
             if user.has_feature('pre_adhan_email'):
                 method = 'email'
             else:
@@ -580,27 +578,31 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
         
         success = False
         error_message = None
+        result = None
         
         try:
             if method == 'email':
                 send_pre_prayer_notification_email(user.email, prayer_name, prayer_time)
                 success = True
+                result = {"provider": "email", "message_id": "email_sent"}
             
             elif method == 'whatsapp':
-                if user.whatsapp_number:
-                    whatsapp_service = WhatsAppService()
-                    whatsapp_service.send_pre_adhan_notification(user, prayer_name, prayer_time)
-                    success = True
-                else:
-                    error_message = "WhatsApp number not provided"
+                result = NotificationService.send_whatsapp(
+                    user, 
+                    f'🕌 Prayer Time Reminder\n\nAssalamu Alaikum!\nIt\'s almost time for {prayer_name} prayer.\nPrayer time: {prayer_time.strftime("%I:%M %p")}\n\nMay Allah accept your prayers. 🤲',
+                    log_usage=True
+                )
+                success = result.success
+                error_message = result.error_message if not result.success else None
             
             elif method == 'sms':
-                if user.phone_number:
-                    message = f'Assalamu Alaikum! Prayer time ({prayer_name}) is approaching at {prayer_time.strftime("%I:%M %p")}.'
-                    send_sms(user.phone_number, message)
-                    success = True
-                else:
-                    error_message = "Phone number not provided"
+                result = NotificationService.send_sms(
+                    user,
+                    f'Assalamu Alaikum! Prayer time ({prayer_name}) is approaching at {prayer_time.strftime("%I:%M %p")}.',
+                    log_usage=True
+                )
+                success = result.success
+                error_message = result.error_message if not result.success else None
             
             if success:
                 user.record_notification_sent()
@@ -613,7 +615,12 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
                     success=True
                 )
                 
-                return {"status": "success", "method": method}
+                return {
+                    "status": "success", 
+                    "method": method,
+                    "provider": result.provider_name if result else "email",
+                    "message_id": result.message_id if result else None
+                }
             else:
                 NotificationUsage.objects.create(
                     user=user,
@@ -639,6 +646,91 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
     except Exception as e:
         print(f"❌ Error in send_pre_adhan_notification for user {user_id}: {str(e)}")
         return {"status": "error", "reason": str(e)}
+
+
+# @shared_task
+# def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
+#     """Send pre-adhan notification respecting subscription limits"""
+#     try:
+#         user = User.objects.get(pk=user_id)
+        
+#         # Check if user can send notifications
+#         if not user.can_send_notification('pre_adhan'):
+#             return {"status": "skipped", "reason": "Daily limit reached"}
+        
+#         # Ensure user preferences exist
+#         user_preferences = ensure_user_preferences(user)
+#         method = user_preferences.notification_before_prayer
+        
+#         # Check if user's plan supports the chosen method
+#         if not SubscriptionService.validate_notification_preference(user, 'pre_adhan', method):
+#             # Fall back to email if available
+#             if user.has_feature('pre_adhan_email'):
+#                 method = 'email'
+#             else:
+#                 return {"status": "error", "reason": "Feature not available in current plan"}
+        
+#         success = False
+#         error_message = None
+        
+#         try:
+#             if method == 'email':
+#                 send_pre_prayer_notification_email(user.email, prayer_name, prayer_time)
+#                 success = True
+            
+#             elif method == 'whatsapp':
+#                 if user.whatsapp_number:
+#                     whatsapp_service = WhatsAppService()
+#                     whatsapp_service.send_pre_adhan_notification(user, prayer_name, prayer_time)
+#                     success = True
+#                 else:
+#                     error_message = "WhatsApp number not provided"
+            
+#             elif method == 'sms':
+#                 if user.phone_number:
+#                     message = f'Assalamu Alaikum! Prayer time ({prayer_name}) is approaching at {prayer_time.strftime("%I:%M %p")}.'
+#                     send_sms(user.phone_number, message)
+#                     success = True
+#                 else:
+#                     error_message = "Phone number not provided"
+            
+#             if success:
+#                 user.record_notification_sent()
+                
+#                 # Log the notification
+#                 NotificationUsage.objects.create(
+#                     user=user,
+#                     notification_type=method,
+#                     prayer_name=prayer_name,
+#                     success=True
+#                 )
+                
+#                 return {"status": "success", "method": method}
+#             else:
+#                 NotificationUsage.objects.create(
+#                     user=user,
+#                     notification_type=method,
+#                     prayer_name=prayer_name,
+#                     success=False,
+#                     error_message=error_message
+#                 )
+#                 return {"status": "error", "reason": error_message}
+                
+#         except Exception as e:
+#             NotificationUsage.objects.create(
+#                 user=user,
+#                 notification_type=method,
+#                 prayer_name=prayer_name,
+#                 success=False,
+#                 error_message=str(e)
+#             )
+#             return {"status": "error", "reason": str(e)}
+            
+#     except User.DoesNotExist:
+#         return {"status": "error", "reason": "User not found"}
+#     except Exception as e:
+#         print(f"❌ Error in send_pre_adhan_notification for user {user_id}: {str(e)}")
+#         return {"status": "error", "reason": str(e)}
 
 
 @shared_task
