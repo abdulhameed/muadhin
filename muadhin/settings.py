@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'subscriptions',
+    'communications',
 ]
 
 MIDDLEWARE = [
@@ -291,3 +292,35 @@ DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
 # EMAIL_BACKEND = 'django_mailgun_mime.backends.MailgunMIMEBackend'
 # MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
 # MAILGUN_DOMAIN_NAME = os.getenv('MAILGUN_DOMAIN_NAME')
+
+# Communication Provider Configurations
+COMMUNICATION_PROVIDERS = {
+    'twilio': {
+        'account_sid': os.getenv('TWILIO_ACCOUNT_SID', ''),
+        'auth_token': os.getenv('TWILIO_AUTH_TOKEN', ''),
+        'phone_number': os.getenv('TWILIO_PHONE_NUMBER', ''),
+        'whatsapp_number': os.getenv('TWILIO_WHATSAPP_NUMBER', ''),
+        'debug_mode': DEBUG,  # Use debug mode in development
+    },
+    'nigeria': {
+        'api_key': os.getenv('NIGERIA_SMS_API_KEY', ''),
+        'sender_id': os.getenv('NIGERIA_SMS_SENDER_ID', 'Muadhin'),
+        'api_url': os.getenv('NIGERIA_SMS_API_URL', 'https://api.termii.com/api/sms/send'),
+        'debug_mode': DEBUG,
+    },
+    'india': {
+        'api_key': os.getenv('INDIA_SMS_API_KEY', ''),
+        'sender_id': os.getenv('INDIA_SMS_SENDER_ID', 'MUADHN'),
+        'api_url': os.getenv('INDIA_SMS_API_URL', 'https://api.textlocal.in/send/'),
+        'debug_mode': DEBUG,
+    },
+    # Add more providers as needed
+}
+
+# Provider Selection Rules
+COMMUNICATION_PROVIDER_RULES = {
+    'default_fallback': 'twilio',
+    'cost_optimization': True,  # Always try cheaper providers first
+    'max_retries': 2,  # Maximum number of providers to try
+    'health_check_interval': 3600,  # Check provider health every hour
+}
