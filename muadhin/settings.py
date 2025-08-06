@@ -302,6 +302,17 @@ COMMUNICATION_PROVIDERS = {
         'whatsapp_number': os.getenv('TWILIO_WHATSAPP_NUMBER', ''),
         'debug_mode': DEBUG,  # Use debug mode in development
     },
+    'africastalking': {
+        'username': os.getenv('AFRICASTALKING_USERNAME', ''),
+        'api_key': os.getenv('AFRICASTALKING_API_KEY', ''),
+        'sender_id': os.getenv('AFRICASTALKING_SENDER_ID', 'Muadhin'),
+        'phone_number': os.getenv('AFRICASTALKING_PHONE_NUMBER', ''),  # Your AT number
+        'caller_id': os.getenv('AFRICASTALKING_CALLER_ID', ''),        # Caller ID for voice
+        'debug_mode': DEBUG,
+        
+        # Voice callback configuration
+        'voice_callback_url': f"https://{os.getenv('DOMAIN', 'localhost:8000')}/api/communications/callbacks/africastalking/voice/",
+    },
     'nigeria': {
         'api_key': os.getenv('NIGERIA_SMS_API_KEY', ''),
         'sender_id': os.getenv('NIGERIA_SMS_SENDER_ID', 'Muadhin'),
@@ -321,6 +332,6 @@ COMMUNICATION_PROVIDERS = {
 COMMUNICATION_PROVIDER_RULES = {
     'default_fallback': 'twilio',
     'cost_optimization': True,  # Always try cheaper providers first
-    'max_retries': 2,  # Maximum number of providers to try
+    'max_retries': 3,  # Maximum number of providers to try
     'health_check_interval': 3600,  # Check provider health every hour
 }
