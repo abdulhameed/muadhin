@@ -49,8 +49,8 @@ class Command(BaseCommand):
 
         try:
             # Initialize the registry properly
-            if not ProviderRegistry._initialized():
-                ProviderRegistry.initialize_registry()
+            if not ProviderRegistry._initialized:
+                ProviderRegistry.initialize()
                 self.stdout.write('✅ Provider registry initialized')
             
             # Get the provider
