@@ -5,5 +5,5 @@ from .india_provider import IndiaProvider
 
 __all__ = [
     'SMSProvider', 'CallProvider', 'WhatsAppProvider',
-    'TwilioProvider', 'NigeriaProvider', 'IndiaProvider'
+    'TwilioProvider', 'NigeriaProvider', 'IndiaProvider', 'AfricasTalkingProvider'
 ]
