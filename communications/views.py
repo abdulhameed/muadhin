@@ -2,13 +2,20 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum, Avg
+from django.db.models import Count, Sum, Avg, Q
 from django.utils import timezone
 from datetime import timedelta
 
 from .services.provider_registry import ProviderRegistry
 from .services.notification_service import NotificationService
 from .models import CommunicationLog, ProviderStatus
+
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -80,7 +87,7 @@ class AdminProviderAnalyticsAPIView(APIView):
         # Provider breakdown
         provider_stats = logs.values('provider_name').annotate(
             count=Count('id'),
-            success_count=Count('id', filter=models.Q(success=True)),
+            success_count=Count('id', filter=Q(success=True)),
             total_cost=Sum('cost'),
             avg_cost=Avg('cost')
         ).order_by('-count')
@@ -95,7 +102,7 @@ class AdminProviderAnalyticsAPIView(APIView):
         # Communication type breakdown
         type_stats = logs.values('communication_type').annotate(
             count=Count('id'),
-            success_count=Count('id', filter=models.Q(success=True)),
+            success_count=Count('id', filter=Q(success=True)),
             total_cost=Sum('cost')
         ).order_by('-count')
         
@@ -246,3 +253,56 @@ class TestNotificationAPIView(APIView):
                 'success': False,
                 'error': str(e)
             }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def africas_talking_voice_callback(request):
+    """
+    Callback endpoint for Africa's Talking voice calls
+    This serves the TTS/Audio XML response
+    """
+    # Get parameters from Africa's Talking
+    session_id = request.GET.get('sessionId')
+    phone_number = request.GET.get('phoneNumber')
+    
+    # You can customize the response based on the call type
+    call_type = request.GET.get('callType', 'adhan')  # Custom parameter
+    
+    if call_type == 'adhan_audio':
+        # Serve audio Adhan
+        audio_url = request.GET.get('audioUrl', 'https://media.sd.ma/assabile/adhan_3435370/0bf83c80b583.mp3')
+        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">Assalamu Alaikum. It is time for prayer.</Say>
+            <Play url="{audio_url}"/>
+            <Say voice="woman">May Allah accept your prayers.</Say>
+        </Response>'''
+    
+    elif call_type == 'adhan_text':
+        # Serve TTS Adhan
+        prayer_name = request.GET.get('prayerName', 'prayer')
+        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">Assalamu Alaikum. It is time for {prayer_name} prayer.</Say>
+            <Say voice="woman">Allahu Akbar. Allahu Akbar. Allahu Akbar. Allahu Akbar.</Say>
+            <Say voice="woman">Ash-hadu an la ilaha illa Allah.</Say>
+            <Say voice="woman">Ash-hadu anna Muhammadan Rasul Allah.</Say>
+            <Say voice="woman">Hayya 'ala-s-Salah.</Say>
+            <Say voice="woman">Hayya 'ala-l-Falah.</Say>
+            <Say voice="woman">Allahu Akbar. Allahu Akbar.</Say>
+            <Say voice="woman">La ilaha illa Allah.</Say>
+            <Say voice="woman">May Allah accept your prayers.</Say>
+        </Response>'''
+    
+    else:
+        # Default response
+        message = request.GET.get('message', 'This is a test call from Muadhin.')
+        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">{message}</Say>
+        </Response>'''
+    
+    logger.info(f"Voice callback for {phone_number}, session {session_id}")
+    
+    return HttpResponse(xml_response, content_type='application/xml')
