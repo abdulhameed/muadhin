@@ -1,6 +1,7 @@
 services:
   # Django Web Service
   - type: web
+    healthCheckPath: /healthz
     name: muadhin-web
     env: python
     buildCommand: chmod +x render_build.sh && ./render_build.sh
@@ -17,6 +18,10 @@ services:
         generateValue: true
       - key: DEBUG
         value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: muadhin.settings
+      - key: STATICFILES_STORAGE
+        value: "whitenoise.storage.CompressedManifestStaticFilesStorage"
     
   # Celery Worker Service
   - type: worker
