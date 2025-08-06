@@ -49,7 +49,7 @@ class Command(BaseCommand):
 
         try:
             # Initialize the registry properly
-            if not ProviderRegistry.is_initialized():
+            if not ProviderRegistry._initialized():
                 ProviderRegistry.initialize_registry()
                 self.stdout.write('✅ Provider registry initialized')
             
