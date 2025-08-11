@@ -78,6 +78,19 @@ class Command(BaseCommand):
             if not test_sms and not test_voice:
                 self._test_sms(mock_user, provider_name)
 
+            # Show provider configuration
+            self._show_provider_config(provider_name)
+
+            self.stdout.write(
+                self.style.SUCCESS('✅ Test completed successfully!')
+            )
+
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f'❌ Error during testing: {str(e)}')
+            )
+            logger.exception("Error in test_africastalking command")
+
         except Exception as e:
             self.stdout.write(
                 self.style.ERROR(f'❌ Error during testing: {str(e)}')
@@ -251,3 +264,47 @@ def verify_africastalking_setup():
 
 if __name__ == "__main__":
     verify_africastalking_setup()
+
+
+def diagnose_africastalking_config():
+    """Diagnose Africa's Talking configuration issues"""
+    print("🔍 Africa's Talking Configuration Diagnostic")
+    print("=" * 50)
+    
+    # Check environment variables
+    username = os.getenv('AFRICASTALKING_USERNAME', '')
+    api_key = os.getenv('AFRICASTALKING_API_KEY', '')
+    sender_id = os.getenv('AFRICASTALKING_SENDER_ID', 'Muadhin')
+    
+    print("📋 Environment Variables:")
+    print(f"   AFRICASTALKING_USERNAME: {'✅ Set' if username else '❌ Not set'}")
+    print(f"   AFRICASTALKING_API_KEY: {'✅ Set' if api_key else '❌ Not set'}")
+    print(f"   AFRICASTALKING_SENDER_ID: {sender_id}")
+    
+    if username:
+        print(f"   Username: {username}")
+    if api_key:
+        print(f"   API Key: {api_key[:8]}***{api_key[-4:] if len(api_key) > 4 else '***'}")
+    
+    # Check Django settings
+    at_config = settings.COMMUNICATION_PROVIDERS.get('africastalking', {})
+    print(f"\n⚙️ Django Configuration:")
+    print(f"   Username in config: {'✅' if at_config.get('username') else '❌'}")
+    print(f"   API Key in config: {'✅' if at_config.get('api_key') else '❌'}")
+    print(f"   Debug mode: {at_config.get('debug_mode', False)}")
+    
+    # Recommendations
+    print(f"\n💡 Recommendations:")
+    if not username or not api_key:
+        print("   1. Get your Africa's Talking credentials from: https://account.africastalking.com/")
+        print("   2. Add them to your .env file:")
+        print("      AFRICASTALKING_USERNAME=your_username_here")
+        print("      AFRICASTALKING_API_KEY=your_api_key_here")
+        print("   3. Restart your Django server")
+        print("   4. Run the test again")
+    else:
+        print("   ✅ Credentials are configured")
+        print("   🔍 The 401 error suggests the credentials might be incorrect")
+        print("   💡 Double-check your username and API key in the AT dashboard")
+    
+    return username, api_key

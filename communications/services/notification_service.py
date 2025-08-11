@@ -14,7 +14,7 @@ class NotificationService:
     """Main service for sending notifications with automatic provider selection"""
     
     @staticmethod
-    def send_sms(user, message: str, log_usage: bool = True) -> CommunicationResult:
+    def send_sms(user, message: str, log_usage: bool = True, preferred_provider: str = None) -> CommunicationResult:
         """Send SMS using the best available provider for user's country"""
         country_code = getattr(user, 'country', 'US')[:2].upper()
         phone_number = getattr(user, 'phone_number', '')
@@ -26,6 +26,33 @@ class NotificationService:
                 provider_name="NotificationService"
             )
         
+        # If preferred provider is specified (for testing), try it first
+        if preferred_provider:
+            provider = ProviderRegistry.get_provider(preferred_provider)
+            if provider and isinstance(provider, SMSProvider):
+                try:
+                    logger.info(f"🧪 Testing with preferred provider: {preferred_provider}")
+                    result = provider.send_sms_sync(phone_number, message, country_code)
+                    
+                    if result.success:
+                        logger.info(f"✅ SMS sent via preferred {provider.name} to {phone_number[:8]}***")
+                        
+                        if log_usage:
+                            NotificationService._log_usage(
+                                user, 'sms', result.provider_name, 
+                                True, result.message_id, result.cost
+                            )
+                        
+                        return result
+                    else:
+                        logger.warning(f"⚠️ Preferred provider {preferred_provider} failed: {result.error_message}")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Preferred provider {preferred_provider} error: {e}")
+            else:
+                logger.warning(f"⚠️ Preferred provider {preferred_provider} not found or not SMS-capable")
+        
+        # Use existing country-based provider selection logic
         providers = ProviderRegistry.get_providers_for_country(country_code)
         sms_providers = [p for p in providers if isinstance(p, SMSProvider)]
         
@@ -36,7 +63,7 @@ class NotificationService:
                 provider_name="NotificationService"
             )
         
-        # Try providers in order of preference
+        # Try providers in order of preference (your existing cost-optimization logic)
         last_error = None
         for provider in sms_providers:
             try:
@@ -71,7 +98,7 @@ class NotificationService:
         
         if log_usage:
             NotificationService._log_usage(
-                user, 'sms', 'failed', False, 
+                user, 'sms', 'failed', False,
                 error_message=error_result.error_message
             )
         

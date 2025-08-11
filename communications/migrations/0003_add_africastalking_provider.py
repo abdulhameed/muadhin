@@ -38,7 +38,7 @@ def reverse_africastalking_provider(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('communications', '0002_seed_providers'),
+        ('communications', '0001_initial'),
     ]
 
     operations = [
