@@ -48,6 +48,7 @@ phonenumbers==8.13.22
 prometheus_client==0.20.0
 prompt_toolkit==3.0.50
 psycopg2-binary==2.9.10
+pycountry==24.6.1
 pycparser==2.22
 PyJWT==1.7.1
 python-crontab==3.2.0
