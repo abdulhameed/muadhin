@@ -335,3 +335,8 @@ COMMUNICATION_PROVIDER_RULES = {
     'max_retries': 3,  # Maximum number of providers to try
     'health_check_interval': 3600,  # Check provider health every hour
 }
+
+GEONAMES_USERNAME = 'giwabdul'
+REST_COUNTRIES_API_URL = 'https://restcountries.com/v3.1'
+GEONAMES_API_URL = 'http://api.geonames.org'
+LOCATION_CACHE_TIMEOUT = 60 * 60 * 24  # 24 hours

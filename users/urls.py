@@ -1,7 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api_views import (
+    CitiesAPIView,
+    CountriesAPIView,
     CurrentTimezoneAPIView,
+    LocationAutocompleteAPIView,
     NotificationSettingsAPIView,
     ProfileSettingsAPIView,
     ResendActivationEmailView,
@@ -38,5 +41,9 @@ urlpatterns = [
     path('timezones/', TimezonesAPIView.as_view(), name='timezones'),
     path('timezone/current/', CurrentTimezoneAPIView.as_view(), name='current-timezone'),
 
+    # Location endpoints
+    path('countries/', CountriesAPIView.as_view(), name='countries'),
+    path('cities/', CitiesAPIView.as_view(), name='cities'),
+    path('locations/autocomplete/', LocationAutocompleteAPIView.as_view(), name='location-autocomplete'),
 ]
-# 
+# git add . && 

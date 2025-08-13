@@ -1,6 +1,8 @@
 import uuid
+import logging
 from rest_framework import viewsets, generics, permissions
 from django.contrib.auth.tokens import default_token_generator
+
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -23,8 +25,10 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.decorators import action
+from .services.location_service import LocationService
 
-# from django.contrib.auth.models import User
+# Configure logger for this module
+logger = logging.getLogger(__name__)
 
 
 User = get_user_model()
@@ -1302,3 +1306,198 @@ class CurrentTimezoneAPIView(APIView):
                 'error': str(e),
                 'current_timezone': user.timezone
             }, status=500)
+
+
+class CountriesAPIView(APIView):
+    """
+    Comprehensive countries API using multiple data sources
+    
+    Data Sources:
+    1. REST Countries API (primary) - Complete country data
+    2. pycountry library (fallback) - Offline country data
+    
+    Features:
+    - All 195+ countries worldwide
+    - Multiple filter options
+    - Search functionality
+    - Caching for performance
+    """
+    permission_classes = [AllowAny]
+    
+    def __init__(self):
+        super().__init__()
+        self.location_service = LocationService()
+    
+    @method_decorator(cache_page(60 * 60 * 12))  # Cache for 12 hours
+    def get(self, request):
+        """Get countries with filtering and search"""
+        
+        filter_type = request.query_params.get('filter', 'all')
+        search = request.query_params.get('search', '')
+        
+        try:
+            countries = self.location_service.get_all_countries(
+                filter_type=filter_type,
+                search=search
+            )
+            
+            return Response({
+                'success': True,
+                'countries': countries,
+                'total_count': len(countries),
+                'filter_applied': filter_type,
+                'search_query': search,
+                'available_filters': ['all', 'popular', 'muslim_majority'],
+                'data_source': 'REST Countries API + pycountry'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error fetching countries: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to fetch countries',
+                'message': 'Please try again later'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CitiesAPIView(APIView):
+    """
+    Comprehensive cities API using GeoNames database
+    
+    Data Source: GeoNames API (11M+ places worldwide)
+    
+    Features:
+    - Cities, towns, villages for any country
+    - Population data
+    - Geographic coordinates
+    - Administrative divisions
+    - Search functionality
+    - Caching for performance
+    """
+    permission_classes = [AllowAny]
+    
+    def __init__(self):
+        super().__init__()
+        self.location_service = LocationService()
+    
+    @method_decorator(cache_page(60 * 60 * 6))  # Cache for 6 hours
+    def get(self, request):
+        """Get cities for a country with search and pagination"""
+        
+        country_code = request.query_params.get('country', '').upper()
+        if not country_code:
+            return Response({
+                'success': False,
+                'error': 'country parameter is required',
+                'example': '/api/users/cities/?country=NG'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        search = request.query_params.get('search', '')
+        limit = min(int(request.query_params.get('limit', 100)), 1000)
+        
+        try:
+            cities = self.location_service.get_cities_for_country(
+                country_code=country_code,
+                search=search,
+                limit=limit
+            )
+            
+            return Response({
+                'success': True,
+                'country_code': country_code,
+                'cities': cities,
+                'total_count': len(cities),
+                'search_query': search,
+                'limit_applied': limit,
+                'data_source': 'GeoNames API'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error fetching cities for {country_code}: {e}")
+            return Response({
+                'success': False,
+                'error': f'Failed to fetch cities for country: {country_code}',
+                'message': 'Please check the country code and try again'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LocationAutocompleteAPIView(APIView):
+    """
+    Location autocomplete for signup forms
+    
+    Returns both countries and cities in a single response
+    Optimized for frontend autocomplete components
+    """
+    permission_classes = [AllowAny]
+    
+    def __init__(self):
+        super().__init__()
+        self.location_service = LocationService()
+    
+    def get(self, request):
+        """Autocomplete search for locations"""
+        
+        query = request.query_params.get('q', '').strip()
+        if len(query) < 2:
+            return Response({
+                'success': False,
+                'error': 'Query must be at least 2 characters'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        country_code = request.query_params.get('country', '')
+        limit = min(int(request.query_params.get('limit', 10)), 50)
+        
+        try:
+            results = []
+            
+            # Search countries if no specific country provided
+            if not country_code:
+                countries = self.location_service.get_all_countries(
+                    filter_type='popular',
+                    search=query
+                )[:limit//2]
+                
+                for country in countries:
+                    results.append({
+                        'type': 'country',
+                        'name': country['name'],
+                        'code': country['code'],
+                        'display': f"{country['name']} ({country['code']})",
+                        'flag': country.get('flag', '')
+                    })
+            
+            # Search cities
+            if country_code:
+                cities = self.location_service.get_cities_for_country(
+                    country_code=country_code.upper(),
+                    search=query,
+                    limit=limit
+                )
+                
+                for city in cities[:limit]:
+                    results.append({
+                        'type': 'city',
+                        'name': city['name'],
+                        'country_code': country_code.upper(),
+                        'admin1': city.get('admin1', ''),
+                        'display': f"{city['name']}, {city.get('admin1', country_code)}",
+                        'population': city.get('population', 0),
+                        'is_capital': city.get('is_capital', False)
+                    })
+            
+            return Response({
+                'success': True,
+                'query': query,
+                'results': results[:limit],
+                'total_count': len(results)
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in location autocomplete: {e}")
+            return Response({
+                'success': False,
+                'error': 'Autocomplete search failed',
+                'message': 'Please try again'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# 
