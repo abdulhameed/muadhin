@@ -305,10 +305,10 @@ COMMUNICATION_PROVIDERS = {
     'africastalking': {
         'username': os.getenv('AFRICASTALKING_USERNAME', ''),
         'api_key': os.getenv('AFRICASTALKING_API_KEY', ''),
-        'sender_id': os.getenv('AFRICASTALKING_SENDER_ID', 'Muadhin'),
+        'sender_id': os.getenv('AFRICASTALKING_SENDER_ID', ''),
         'phone_number': os.getenv('AFRICASTALKING_PHONE_NUMBER', ''),  # Your AT number
         'caller_id': os.getenv('AFRICASTALKING_CALLER_ID', ''),        # Caller ID for voice
-        'debug_mode': DEBUG,
+        'debug_mode': False,  # Live mode - credentials are working
         
         # Voice callback configuration
         'voice_callback_url': f"https://{os.getenv('DOMAIN', 'localhost:8000')}/api/communications/callbacks/africastalking/voice/",

@@ -150,11 +150,12 @@ class Command(BaseCommand):
         test_audio_url = "https://media.sd.ma/assabile/adhan_3435370/0bf83c80b583.mp3"
         
         try:
-            result = NotificationService.make_call(
-                user=user,
+            # Directly test the provider instead of using NotificationService
+            provider = ProviderRegistry.get_provider(provider_name)
+            result = provider.make_call_sync(
+                to_number=user.phone_number,
                 audio_url=test_audio_url,
-                preferred_provider=provider_name,
-                log_usage=False  # Don't log test calls
+                country_code=user.country
             )
             
             if result.success:
