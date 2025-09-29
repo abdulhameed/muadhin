@@ -1499,5 +1499,3 @@ class LocationAutocompleteAPIView(APIView):
                 'error': 'Autocomplete search failed',
                 'message': 'Please try again'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-# 

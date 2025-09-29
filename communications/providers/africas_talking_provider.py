@@ -103,9 +103,13 @@ class AfricasTalkingProvider(CombinedProvider):
             payload = {
                 'username': self.config['username'],
                 'to': clean_number,
-                'message': message,
-                'from': self.config.get('sender_id', 'Muadhin')
+                'message': message
             }
+            
+            # Only add sender_id if explicitly configured and not empty
+            sender_id = self.config.get('sender_id')
+            if sender_id and sender_id.strip():
+                payload['from'] = sender_id
             
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
             
