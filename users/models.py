@@ -87,6 +87,59 @@ class CustomUser(AbstractUser):
                 subscription.increment_usage()
         except UserSubscription.DoesNotExist:
             pass
+    
+    def get_country_code(self):
+        """Get user's country code for provider selection"""
+        # Map common country names to codes
+        country_mapping = {
+            'NIGERIA': 'NG',
+            'UNITED KINGDOM': 'GB', 
+            'UK': 'GB',
+            'GREAT BRITAIN': 'GB',
+            'CANADA': 'CA',
+            'AUSTRALIA': 'AU',
+            'UNITED ARAB EMIRATES': 'AE',
+            'UAE': 'AE',
+            'SAUDI ARABIA': 'SA',
+            'QATAR': 'QA',
+            'UNITED STATES': 'US',
+            'USA': 'US',
+            'AMERICA': 'US',
+        }
+        
+        country_upper = self.country.upper()
+        return country_mapping.get(country_upper, 'GLOBAL')
+    
+    def get_available_plans(self):
+        """Get subscription plans available for user's country"""
+        from subscriptions.models import SubscriptionPlan
+        country_code = self.get_country_code()
+        return SubscriptionPlan.get_plans_for_country(country_code)
+    
+    def get_optimal_provider(self):
+        """Get the best communication provider for this user's country"""
+        from communications.services.provider_registry import ProviderRegistry
+        country_code = self.get_country_code()
+        return ProviderRegistry.get_best_provider_for_cost(country_code)
+    
+    @property
+    def is_nigeria_user(self):
+        """Check if user is from Nigeria"""
+        return self.get_country_code() == 'NG'
+    
+    @property 
+    def preferred_currency(self):
+        """Get user's preferred currency based on country"""
+        currency_mapping = {
+            'NG': 'NGN',
+            'GB': 'GBP',
+            'CA': 'CAD', 
+            'AU': 'AUD',
+            'AE': 'AED',
+            'SA': 'SAR',
+            'QA': 'QAR',
+        }
+        return currency_mapping.get(self.get_country_code(), 'USD')
 
 
 class CustomUserManager(models.Manager):

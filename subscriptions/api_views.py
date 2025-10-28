@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from .models import SubscriptionPlan, UserSubscription, SubscriptionHistory
 from .serializers import SubscriptionPlanSerializer, UserSubscriptionSerializer, SubscriptionHistorySerializer
 from .services.subscription_service import SubscriptionService
+from communications.services.provider_registry import ProviderRegistry
 
 
 class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
@@ -12,6 +13,128 @@ class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SubscriptionPlan.objects.filter(is_active=True)
     serializer_class = SubscriptionPlanSerializer
     permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        """Filter plans by country if specified"""
+        queryset = super().get_queryset()
+        country = self.request.query_params.get('country')
+        
+        if country:
+            # Get country-specific plans first, then global fallbacks
+            return SubscriptionPlan.get_plans_for_country(country)
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Enhanced list with country-specific data"""
+        country = request.query_params.get('country')
+        response = super().list(request, *args, **kwargs)
+        
+        if country:
+            # Add country-specific metadata
+            user_country_info = self._get_country_info(country)
+            response.data = {
+                'country_info': user_country_info,
+                'plans': response.data
+            }
+            
+            # Add localized pricing and savings info to each plan
+            for plan_data in response.data['plans']:
+                plan = SubscriptionPlan.objects.get(id=plan_data['id'])
+                plan_data['localized_price'] = plan.localized_price_display
+                
+                # Calculate savings vs global plan
+                if plan.country != 'GLOBAL':
+                    global_plan = SubscriptionPlan.get_best_plan_for_country(plan.plan_type, 'GLOBAL')
+                    if global_plan and plan.currency != global_plan.currency:
+                        # Rough savings calculation (should use real exchange rates)
+                        if plan.currency == 'NGN' and global_plan.currency == 'USD':
+                            # Rough conversion for demo (₦1500 vs $9.99)
+                            savings = 80 if plan.plan_type == 'basic' else 75
+                            plan_data['savings_vs_global'] = f"{savings}%"
+        
+        return response
+    
+    def _get_country_info(self, country_code):
+        """Get country-specific information"""
+        country_mapping = {
+            'NG': {
+                'name': 'Nigeria',
+                'currency': 'NGN',
+                'currency_symbol': '₦',
+                'flag': '🇳🇬',
+                'primary_provider': 'AfricasTalking',
+                'cost_advantage': '66% cheaper than global rates'
+            },
+            'GB': {
+                'name': 'United Kingdom', 
+                'currency': 'GBP',
+                'currency_symbol': '£',
+                'flag': '🇬🇧',
+                'primary_provider': 'Twilio',
+                'cost_advantage': 'Premium global rates'
+            }
+        }
+        
+        return country_mapping.get(country_code.upper(), {
+            'name': 'Global',
+            'currency': 'USD', 
+            'currency_symbol': '$',
+            'flag': '🌍'
+        })
+    
+    @action(detail=False, methods=['get'])
+    def price_comparison(self, request):
+        """Compare pricing across countries"""
+        country = request.query_params.get('country', 'NG')
+        plan_type = request.query_params.get('plan_type', 'basic')
+        
+        # Get country-specific plan
+        country_plan = SubscriptionPlan.get_best_plan_for_country(plan_type, country)
+        global_plan = SubscriptionPlan.get_best_plan_for_country(plan_type, 'GLOBAL')
+        
+        comparison = {
+            'country_plan': {
+                'name': country_plan.name if country_plan else None,
+                'price': country_plan.localized_price_display if country_plan else None,
+                'currency': country_plan.currency if country_plan else None,
+            },
+            'global_plan': {
+                'name': global_plan.name if global_plan else None,
+                'price': global_plan.localized_price_display if global_plan else None,
+                'currency': global_plan.currency if global_plan else None,
+            }
+        }
+        
+        # Calculate savings (simplified)
+        if country == 'NG' and country_plan and global_plan:
+            comparison['savings_percent'] = 80 if plan_type == 'basic' else 75
+            comparison['message'] = f"Save {comparison['savings_percent']}% with Nigeria pricing!"
+        
+        return Response(comparison)
+    
+    @action(detail=False, methods=['get']) 
+    def cost_estimate(self, request):
+        """Get SMS cost estimates for country"""
+        country = request.query_params.get('country', 'NG')
+        message_count = int(request.query_params.get('messages', '30'))  # Monthly estimate
+        
+        # Get provider cost estimates
+        estimates = ProviderRegistry.get_cost_estimate_for_country(country, message_count)
+        
+        # Get best provider
+        best_provider = ProviderRegistry.get_best_provider_for_cost(country)
+        
+        return Response({
+            'country': country,
+            'message_count': message_count,
+            'provider_estimates': estimates,
+            'recommended_provider': {
+                'name': best_provider.name if best_provider else None,
+                'cost_per_message': best_provider.get_cost_per_message(country) if best_provider else None
+            },
+            'monthly_cost_estimate': estimates.get(best_provider.name, {}).get('total_cost') if best_provider else None
+        })
 
 
 class UserSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):

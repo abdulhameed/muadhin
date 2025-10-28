@@ -20,8 +20,32 @@ class SubscriptionPlan(models.Model):
         ('lifetime', 'Lifetime'),
     ]
     
+    COUNTRIES = [
+        ('GLOBAL', 'Global'),
+        ('NG', 'Nigeria'),
+        ('UK', 'United Kingdom'),
+        ('CA', 'Canada'),
+        ('AU', 'Australia'),
+        ('AE', 'United Arab Emirates'),
+        ('SA', 'Saudi Arabia'),
+        ('QA', 'Qatar'),
+    ]
+    
+    CURRENCIES = [
+        ('USD', 'US Dollar'),
+        ('NGN', 'Nigerian Naira'),
+        ('GBP', 'British Pound'),
+        ('CAD', 'Canadian Dollar'),
+        ('AUD', 'Australian Dollar'),
+        ('AED', 'UAE Dirham'),
+        ('SAR', 'Saudi Riyal'),
+        ('QAR', 'Qatari Riyal'),
+    ]
+    
     name = models.CharField(max_length=100)
-    plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, unique=True)
+    plan_type = models.CharField(max_length=20, choices=PLAN_TYPES)
+    country = models.CharField(max_length=10, choices=COUNTRIES, default='GLOBAL')
+    currency = models.CharField(max_length=3, choices=CURRENCIES, default='USD')
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     billing_cycle = models.CharField(max_length=20, choices=BILLING_CYCLES, default='monthly')
     description = models.TextField(blank=True)
@@ -48,10 +72,15 @@ class SubscriptionPlan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['sort_order', 'price']
+        ordering = ['country', 'sort_order', 'price']
+        unique_together = ['plan_type', 'country', 'billing_cycle']
     
     def __str__(self):
-        return f"{self.name} - ${self.price}"
+        if self.country == 'GLOBAL':
+            return f"{self.name} - {self.currency} {self.price}"
+        else:
+            country_name = dict(self.COUNTRIES)[self.country]
+            return f"{self.name} ({country_name}) - {self.currency} {self.price}"
     
     @property
     def features_list(self):
@@ -76,6 +105,48 @@ class SubscriptionPlan(models.Model):
         if self.custom_adhan_sounds:
             features.append("Custom Adhan Sounds")
         return features
+    
+    @classmethod
+    def get_plans_for_country(cls, country_code):
+        """Get active subscription plans for a specific country"""
+        return cls.objects.filter(
+            country__in=[country_code.upper(), 'GLOBAL'],
+            is_active=True
+        ).order_by('country', 'sort_order')
+    
+    @classmethod
+    def get_best_plan_for_country(cls, plan_type, country_code):
+        """Get the best plan for a country (country-specific first, then global)"""
+        # Try country-specific first
+        country_plan = cls.objects.filter(
+            plan_type=plan_type,
+            country=country_code.upper(),
+            is_active=True
+        ).first()
+        
+        if country_plan:
+            return country_plan
+        
+        # Fallback to global plan
+        return cls.objects.filter(
+            plan_type=plan_type,
+            country='GLOBAL',
+            is_active=True
+        ).first()
+    
+    @property
+    def localized_price_display(self):
+        """Display price in local format"""
+        if self.currency == 'NGN':
+            return f"₦{self.price:,.0f}"
+        elif self.currency == 'USD':
+            return f"${self.price}"
+        elif self.currency == 'GBP':
+            return f"£{self.price}"
+        elif self.currency == 'EUR':
+            return f"€{self.price}"
+        else:
+            return f"{self.currency} {self.price}"
 
 
 class UserSubscription(models.Model):
