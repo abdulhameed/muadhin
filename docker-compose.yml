@@ -1,0 +1,134 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: muadhin_db
+      POSTGRES_USER: muadhin_user
+      POSTGRES_PASSWORD: muadhin_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U muadhin_user -d muadhin_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      target: development
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "${WEB_PORT:-8080}:8000"
+    environment:
+      - DJANGO_ENV=development
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@muadhin.com
+      - DJANGO_SUPERUSER_PASSWORD=admin123
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+
+  celery:
+    build:
+      context: .
+      target: development
+    command: celery
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_ENV=development
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      target: development
+    command: celery-beat
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_ENV=development
+      - DEBUG=1
+      - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+
+  flower:
+    image: mher/flower:2.0.1
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - "5556:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLOWER_UNAUTHENTICATED_API=true
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - muadhin_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+
+networks:
+  muadhin_network:
+    driver: bridge

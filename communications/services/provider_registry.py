@@ -80,10 +80,12 @@ class ProviderRegistry:
                 cls._providers['india'] = IndiaProvider(india_config)
                 logger.info("✅ India provider initialized")
             
-            # Set up country preferences (UPDATED with Africa's Talking priority)
+            # Set up country preferences (OPTIMIZED for Nigeria first strategy)
             cls._country_preferences = {
-                # African countries - Africa's Talking first, then local providers, then Twilio
-                'NG': ['africastalking', 'nigeria', 'twilio'],  # Nigeria: AT > Local > Twilio
+                # NIGERIA - Primary focus market with multiple provider options
+                'NG': ['nigeria', 'africastalking', 'twilio'],  # Nigeria: Local > AT > Twilio (optimized)
+                
+                # Other African countries - Africa's Talking first, then Twilio
                 'KE': ['africastalking', 'twilio'],             # Kenya: AT home country
                 'UG': ['africastalking', 'twilio'],             # Uganda: AT strong presence
                 'TZ': ['africastalking', 'twilio'],             # Tanzania: AT coverage
@@ -99,17 +101,20 @@ class ProviderRegistry:
                 'NE': ['africastalking', 'twilio'],             # Niger: AT coverage
                 'TD': ['africastalking', 'twilio'],             # Chad: AT coverage
                 
-                # Asian countries
+                # Asian countries - For future expansion
                 'IN': ['india', 'twilio'],      # India: local first
                 'BD': ['india', 'twilio'],      # Bangladesh: can use India
                 'LK': ['india', 'twilio'],      # Sri Lanka: can use India
                 'NP': ['india', 'twilio'],      # Nepal: can use India
                 
-                # Western countries - Twilio only
+                # Future expansion countries - Twilio for now
+                'GB': ['twilio'],               # UK: Future expansion
+                'CA': ['twilio'],               # Canada: Future expansion
+                'AU': ['twilio'],               # Australia: Future expansion
+                'AE': ['twilio'],               # UAE: Future expansion
+                'SA': ['twilio'],               # Saudi Arabia: Future expansion
+                'QA': ['twilio'],               # Qatar: Future expansion
                 'US': ['twilio'],               # USA: Twilio
-                'GB': ['twilio'],               # UK: Twilio
-                'CA': ['twilio'],               # Canada: Twilio
-                'AU': ['twilio'],               # Australia: Twilio
                 'DE': ['twilio'],               # Germany: Twilio
                 'FR': ['twilio'],               # France: Twilio
             }
@@ -167,3 +172,44 @@ class ProviderRegistry:
         """Add a new provider to the registry"""
         cls._providers[name] = provider
         logger.info(f"✅ Added provider: {name}")
+    
+    @classmethod
+    def get_cost_estimate_for_country(cls, country_code: str, message_count: int = 1) -> dict:
+        """Get cost estimate for sending messages to a country"""
+        if not cls._initialized:
+            cls.initialize()
+        
+        providers = cls.get_providers_for_country(country_code)
+        estimates = {}
+        
+        for provider in providers:
+            if hasattr(provider, 'get_cost_per_message'):
+                cost_per_msg = provider.get_cost_per_message(country_code)
+                total_cost = cost_per_msg * message_count
+                estimates[provider.name] = {
+                    'cost_per_message': cost_per_msg,
+                    'total_cost': total_cost,
+                    'currency': 'USD'
+                }
+        
+        return estimates
+    
+    @classmethod
+    def get_best_provider_for_cost(cls, country_code: str) -> Optional[BaseProvider]:
+        """Get the cheapest provider for a country"""
+        providers = cls.get_providers_for_country(country_code)
+        
+        if not providers:
+            return None
+        
+        best_provider = None
+        lowest_cost = float('inf')
+        
+        for provider in providers:
+            if hasattr(provider, 'get_cost_per_message'):
+                cost = provider.get_cost_per_message(country_code)
+                if cost < lowest_cost:
+                    lowest_cost = cost
+                    best_provider = provider
+        
+        return best_provider or providers[0]  # Return first if no cost info available

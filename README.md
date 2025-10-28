@@ -25,6 +25,8 @@ A Django-based web application that provides a service to send daily salah (Isla
 
 ## Installation and Setup
 
+### Local Development (Traditional)
+
 1. Clone the repository:
 
    ```
@@ -63,6 +65,83 @@ A Django-based web application that provides a service to send daily salah (Isla
    ```
    celery -A muadhin worker --beat --loglevel=info
    ```
+
+### Docker Development Setup
+
+1. Clone the repository:
+
+   ```
+   git clone https://github.com/abdulhameed/daily-salah-notification.git
+   cd muadhin
+   ```
+
+2. Build and start the development environment:
+
+   ```
+   docker-compose up --build
+   ```
+
+   This will start:
+   - Django development server on `http://localhost:8080`
+   - PostgreSQL database (port 5433)
+   - Redis for Celery (port 6380)
+   - Celery worker and beat scheduler
+   - Flower monitoring on `http://localhost:5556`
+
+3. The application will automatically:
+   - Run database migrations
+   - Create a superuser (admin/admin123) for development
+   - Collect static files
+
+### Docker Production Deployment
+
+1. Create your production environment file:
+
+   ```
+   cp .env.prod.example .env.prod
+   # Edit .env.prod with your production values
+   ```
+
+2. Deploy with production configuration:
+
+   ```
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+   This will start:
+   - Django app with Gunicorn (multiple replicas)
+   - Nginx reverse proxy on port 80
+   - PostgreSQL database with optimized settings
+   - Redis for Celery
+   - Celery workers (multiple replicas)
+   - Celery beat scheduler
+   - Flower monitoring (protected)
+
+3. Monitor the deployment:
+
+   ```
+   docker-compose -f docker-compose.prod.yml logs -f
+   ```
+
+### Docker Commands
+
+```bash
+# Development
+docker-compose up                    # Start all services
+docker-compose up --build           # Rebuild and start
+docker-compose down                  # Stop all services
+docker-compose logs -f web           # View Django logs
+
+# Production
+docker-compose -f docker-compose.prod.yml up -d     # Start production
+docker-compose -f docker-compose.prod.yml down      # Stop production
+docker-compose -f docker-compose.prod.yml logs -f   # View logs
+
+# Utility commands
+docker-compose exec web python manage.py shell      # Django shell
+docker-compose exec web python manage.py migrate    # Run migrations
+docker-compose exec db psql -U muadhin_user -d muadhin_db  # Database shell
+```
 
 ## Usage
 
