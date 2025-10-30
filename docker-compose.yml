@@ -38,6 +38,7 @@ services:
     build:
       context: .
       target: development
+    user: root  # Run as root to fix permission issues
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -53,6 +54,7 @@ services:
       - DJANGO_SUPERUSER_USERNAME=admin
       - DJANGO_SUPERUSER_EMAIL=admin@muadhin.com
       - DJANGO_SUPERUSER_PASSWORD=admin123
+      - DJANGO_SETTINGS_MODULE=muadhin.docker_settings
     depends_on:
       db:
         condition: service_healthy

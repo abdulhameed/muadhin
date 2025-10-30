@@ -788,7 +788,7 @@ def schedule_phone_calls_for_day(user_id, date):
             return {"status": "error", "reason": "No daily prayer found"}
 
         if user_preferences.adhan_call_method == 'call':
-            adhan_audio_url = 'https://media.sd.ma/assabile/adhan_3435370/0bf83c80b583.mp3'
+            adhan_audio_url = settings.ADHAN_AUDIO_URL
             for prayer_time_obj in daily_prayer.prayer_times.all():
                 prayer_time = prayer_time_obj.prayer_time
                 call_datetime = datetime.combine(date, prayer_time)

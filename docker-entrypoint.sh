@@ -53,24 +53,40 @@ run_django_setup() {
     echo "Applying database migrations..."
     python manage.py migrate --noinput
     
-    # Collect static files (only if not in development)
-    if [ "$DJANGO_ENV" != "development" ]; then
-        echo "Collecting static files..."
-        python manage.py collectstatic --noinput --clear
-    fi
+    # Always collect static files for Swagger UI to work
+    echo "Preparing static files directory..."
+    mkdir -p /app/staticfiles
+    chown -R appuser:appgroup /app/staticfiles
+    echo "Collecting static files..."
+    python manage.py collectstatic --noinput --clear
     
     # Create superuser if specified (only in development)
     if [ "$DJANGO_ENV" = "development" ] && [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
         echo "Creating superuser..."
-        python manage.py shell << EOF
+        # Try to create superuser using createsuperuser command
+        python manage.py createsuperuser --noinput \
+            --username="$DJANGO_SUPERUSER_USERNAME" \
+            --email="$DJANGO_SUPERUSER_EMAIL" > /dev/null 2>&1 || true
+
+        # Set password and ensure user is active
+        python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'muadhin.settings')
+django.setup()
 from django.contrib.auth import get_user_model
 User = get_user_model()
-if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
-    User.objects.create_superuser('$DJANGO_SUPERUSER_USERNAME', '$DJANGO_SUPERUSER_EMAIL', '$DJANGO_SUPERUSER_PASSWORD')
-    print('Superuser created.')
-else:
-    print('Superuser already exists.')
-EOF
+try:
+    user, created = User.objects.get_or_create(username='$DJANGO_SUPERUSER_USERNAME', defaults={'email': '$DJANGO_SUPERUSER_EMAIL'})
+    user.set_password('$DJANGO_SUPERUSER_PASSWORD')
+    user.is_active = True
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+    print('Superuser configured successfully.')
+except Exception as e:
+    print(f'Error configuring superuser: {e}')
+" > /dev/null 2>&1 || true
     fi
     
     echo "Django setup completed."

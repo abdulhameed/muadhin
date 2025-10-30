@@ -204,6 +204,11 @@ CACHES = {
     }
 }
 
+ADHAN_AUDIO_URL = os.environ.get(
+      'ADHAN_AUDIO_URL',
+      f"{os.environ.get('SITE_URL', 'http://localhost')}/static/audio/adhan/adhan_filename.mp3"
+  )
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -244,6 +249,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_PERMISSION_OVERRIDES': {
+        '/doc/': ['rest_framework.permissions.AllowAny'],
+        '/redoc/': ['rest_framework.permissions.AllowAny'],
+        '/swagger/': ['rest_framework.permissions.AllowAny'],
+    },
 }
 
 SIMPLE_JWT = {
@@ -262,6 +273,10 @@ SWAGGER_SETTINGS = {
             'in': 'header',
         },
     },
+    'USE_SESSION_AUTH': False,
+    'VALIDATOR_URL': None,
+    'PERSIST_AUTH': True,
+    'DOC_EXPANSION': 'list',
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
