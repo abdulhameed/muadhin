@@ -201,10 +201,42 @@ def diagnose_users_action(modeladmin, request, queryset):
 diagnose_users_action.short_description = "🔍 Diagnose User Setup"
 
 
+class UserSubscriptionInline(admin.StackedInline):
+    model = UserSubscription
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ('plan', 'status', 'start_date', 'end_date', 'trial_end_date')
+    readonly_fields = ('created_at', 'updated_at')
+    verbose_name = 'Subscription'
+    verbose_name_plural = 'Subscription'
+
+
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'sex', 'city', 'country', 'timezone', 'phone_number', 'last_scheduled_time', 'midnight_utc')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'sex', 'city', 'country', 'timezone', 'phone_number', 'subscription_plan', 'subscription_status', 'last_scheduled_time', 'midnight_utc')
+    list_filter = ('sex', 'country', 'timezone', 'subscription__status', 'subscription__plan__plan_type')
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'phone_number')
     actions = [setup_basic_plan_action, diagnose_users_action]
+    inlines = [UserSubscriptionInline]
+    list_select_related = ('subscription', 'subscription__plan')
+
+    def subscription_plan(self, obj):
+        if hasattr(obj, 'subscription') and obj.subscription:
+            return obj.subscription.plan.name
+        return '❌ No plan'
+    subscription_plan.short_description = 'Subscription Plan'
+    subscription_plan.admin_order_field = 'subscription__plan__name'
+
+    def subscription_status(self, obj):
+        if hasattr(obj, 'subscription') and obj.subscription:
+            if obj.subscription.is_active:
+                return '✅ Active'
+            else:
+                return f'❌ {obj.subscription.status}'
+        return '❌ None'
+    subscription_status.short_description = 'Status'
+    subscription_status.admin_order_field = 'subscription__status'
 
     def get_actions(self, request):
         actions = super().get_actions(request)
