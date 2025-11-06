@@ -11,13 +11,60 @@ from rest_framework.response import Response
 import requests
 from django.utils import timezone
 from django.utils.dateparse import parse_time
+from django.core.mail import send_mail
+from django.conf import settings
+import logging
 
 from users.models import PrayerMethod
 from django.db import models, transaction
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 app = Celery('users')
+
+
+@shared_task(bind=True, max_retries=3)
+def send_activation_email(self, user_id, token, activation_link):
+    """
+    Send activation email to user asynchronously
+
+    Args:
+        user_id: ID of the user to send email to
+        token: Activation token
+        activation_link: Full activation URL
+
+    Retries: 3 times with exponential backoff on failure
+    """
+    try:
+        user = User.objects.get(id=user_id)
+
+        logger.info(f"Sending activation email to user {user.username} ({user.email})")
+
+        send_mail(
+            subject='Activate Your Account',
+            message=f'Please click the following link to activate your account: {activation_link}',
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+
+        logger.info(f"✅ Activation email sent successfully to {user.email}")
+        return {"status": "success", "user_id": user_id, "email": user.email}
+
+    except User.DoesNotExist:
+        logger.error(f"❌ User with id {user_id} not found")
+        return {"status": "error", "reason": "User not found"}
+
+    except Exception as e:
+        logger.error(f"❌ Failed to send activation email to user {user_id}: {str(e)}")
+
+        # Retry with exponential backoff (retry after 60s, 120s, 240s)
+        try:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        except self.MaxRetriesExceededError:
+            logger.error(f"❌ Max retries exceeded for user {user_id}. Email will not be sent.")
+            return {"status": "error", "reason": "Max retries exceeded", "error": str(e)}
 
 
 @shared_task

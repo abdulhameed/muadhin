@@ -44,23 +44,24 @@ class UserRegistrationView(generics.CreateAPIView):
 
         # Generate and store the activation token
         token = str(uuid.uuid4())
-        print(f"Generated token >>>>>>>>>>: {token}")
+        logger.info(f"Generated activation token for user: {user.username}")
         auth_token = AuthToken.objects.create(user=user, token=token)
-        print(f"Created AuthToken instance >>>>>>>>>>>: {auth_token}")
+        logger.info(f"Created AuthToken instance for user: {user.username}")
 
-        # Send email activation link
-        # token = default_token_generator.make_token(user)
+        # Build activation link
         activation_link = request.build_absolute_uri(reverse('activate-account', args=[token]))
-        send_mail(
-            'Activate Your Account',
-            f'Please click the following link to activate your account: {activation_link}',
-            # Your email settings
-            settings.EMAIL_HOST_USER,  # Set your default from email here
-            [user.email],  # List of recipient email addresses
-            fail_silently=False,
-        )
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Send activation email asynchronously using Celery
+        from users.tasks import send_activation_email
+        send_activation_email.delay(user.id, token, activation_link)
+
+        logger.info(f"✅ User {user.username} created successfully. Activation email queued.")
+
+        # Return success response immediately (don't wait for email)
+        response_data = serializer.data
+        response_data['message'] = 'Account created successfully! Please check your email to activate your account.'
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class AccountActivationView(generics.GenericAPIView):
@@ -112,17 +113,19 @@ def ResendActivationEmailView(request):
     AuthToken.objects.filter(user=user).delete()  # Delete any existing tokens
     auth_token = AuthToken.objects.create(user=user, token=token)
 
-    # Send email activation link
+    # Build activation link
     activation_link = request.build_absolute_uri(reverse('activate-account', args=[token]))
-    send_mail(
-        'Activate Your Account',
-        f'Please click the following link to activate your account: {activation_link}',
-        settings.EMAIL_HOST_USER,
-        [user.email],
-        fail_silently=False,
-    )
 
-    return Response({'success': 'Activation email has been resent'}, status=status.HTTP_200_OK)
+    # Send activation email asynchronously using Celery
+    from users.tasks import send_activation_email
+    send_activation_email.delay(user.id, token, activation_link)
+
+    logger.info(f"✅ Activation email resend queued for user: {user.username}")
+
+    return Response({
+        'success': 'Activation email has been resent',
+        'message': 'Please check your email for the activation link.'
+    }, status=status.HTTP_200_OK)
 
 
 class PasswordResetView(generics.GenericAPIView):
