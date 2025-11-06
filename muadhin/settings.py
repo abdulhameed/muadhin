@@ -279,7 +279,7 @@ SWAGGER_SETTINGS = {
     'DOC_EXPANSION': 'list',
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+
 
 # TWILIO 
 
@@ -287,12 +287,25 @@ TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
 
-# CSRF_COOKIE_SECURE = True  # Set to True in production with HTTPS
-# SESSION_COOKIE_SECURE = True
-# SESSION_COOKIE_SAMESITE = 'None' 
-# CSRF_TRUSTED_ORIGINS = [
-#     'http://127.0.0.1:8000',
-# ]
+CORS_ALLOW_ALL_ORIGINS = True
+
+# CSRF Settings for Docker/Development
+# For local development and Docker environments
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost',
+    'http://127.0.0.1',
+    'https://api.almuadhin.com/',
+]
+
+# Add production domains when deploying
+if not DEBUG:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS.extend([
+        'https://api.almuadhin.com/',
+    ])
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.zoho.com'
