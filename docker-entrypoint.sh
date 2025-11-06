@@ -56,7 +56,6 @@ run_django_setup() {
     # Always collect static files for Swagger UI to work
     echo "Preparing static files directory..."
     mkdir -p /app/staticfiles
-    chown -R appuser:appgroup /app/staticfiles
     echo "Collecting static files..."
     python manage.py collectstatic --noinput --clear
     
