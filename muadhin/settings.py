@@ -296,7 +296,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost',
     'http://127.0.0.1',
-    'https://api.almuadhin.com/',
+    'https://api.almuadhin.com',
 ]
 
 # Add production domains when deploying
@@ -304,7 +304,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     CSRF_TRUSTED_ORIGINS.extend([
-        'https://api.almuadhin.com/',
+        'https://api.almuadhin.com',
     ])
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
