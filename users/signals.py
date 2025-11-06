@@ -58,26 +58,42 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
             )
             
             # Assign basic subscription plan
+            # Try to get a free global basic plan first, then any basic plan, or create one
             try:
-                basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
-            except SubscriptionPlan.DoesNotExist:
-                # Create basic plan if it doesn't exist
-                basic_plan = SubscriptionPlan.objects.create(
-                    name='Basic Plan',
+                # First, try to get FREE global basic plan
+                basic_plan = SubscriptionPlan.objects.filter(
                     plan_type='basic',
+                    country='GLOBAL',
+                    price=0.00
+                ).first()
+
+                if not basic_plan:
+                    # If no free global plan, get the cheapest basic plan
+                    basic_plan = SubscriptionPlan.objects.filter(
+                        plan_type='basic'
+                    ).order_by('price').first()
+
+                if not basic_plan:
+                    raise SubscriptionPlan.DoesNotExist
+
+            except SubscriptionPlan.DoesNotExist:
+                # Create FREE global basic plan if it doesn't exist
+                basic_plan = SubscriptionPlan.objects.create(
+                    name='Basic - Salah Reminder (Free)',
+                    plan_type='basic',
+                    country='GLOBAL',
+                    currency='USD',
                     price=0.00,
+                    billing_cycle='monthly',
+                    description='Free basic prayer reminders via email. Perfect for getting started.',
+                    is_active=True,
+                    sort_order=0,
+                    daily_prayer_summary_email=True,
+                    pre_adhan_email=True,
+                    adhan_call_text=False,
                     max_notifications_per_day=10,
-                    features={
-                        'daily_prayer_summary_email': True,
-                        'pre_adhan_email': True,
-                        'adhan_call_email': True,
-                        'daily_prayer_summary_sms': False,
-                        'daily_prayer_summary_whatsapp': False,
-                        'pre_adhan_sms': False,
-                        'pre_adhan_whatsapp': False,
-                        'adhan_call_audio': False,
-                        'adhan_call_text': False,
-                    }
+                    priority_support=False,
+                    custom_adhan_sounds=False,
                 )
             
             # Create user subscription with basic plan
@@ -86,10 +102,7 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
                 defaults={
                     'plan': basic_plan,
                     'status': 'active',
-                    'start_date': date.today(),
-                    'end_date': None,  # Basic plan never expires
-                    'is_trial': False,
-                    'auto_renew': True,
+                    'end_date': None,  # Basic plan never expires (lifetime)
                 }
             )
             
