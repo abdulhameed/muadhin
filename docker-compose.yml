@@ -44,7 +44,7 @@ services:
       - .:/app
       - static_volume:/app/staticfiles
     ports:
-      - "${WEB_PORT:-8080}:8000"
+      - "${WEB_PORT:-8002}:8000"
     environment:
       - DJANGO_ENV=development
       - DEBUG=1
