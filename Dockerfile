@@ -23,6 +23,7 @@ RUN apt-get update \
 
 # Create a non-root user
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN mkdir -p /app/staticfiles && chown -R appuser:appgroup /app/staticfiles
 
 # Install Python dependencies
 COPY requirements.txt .
