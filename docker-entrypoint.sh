@@ -56,6 +56,11 @@ run_django_setup() {
     # Always collect static files for Swagger UI to work
     echo "Preparing static files directory..."
     mkdir -p /app/staticfiles
+
+    # Clean up macOS .DS_Store files that cause permission issues
+    echo "Cleaning up .DS_Store files..."
+    find /app/staticfiles -name '.DS_Store' -type f -delete 2>/dev/null || true
+
     echo "Collecting static files..."
     python manage.py collectstatic --noinput --clear
     
