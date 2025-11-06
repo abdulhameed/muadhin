@@ -100,9 +100,10 @@ def process_user_chunk(user_ids, now_iso):
     now = datetime.fromisoformat(now_iso.replace('Z', '+00:00'))
     
     # Only select the fields we need and use iterator for memory efficiency
+    # Removed select_related('preferences') to avoid FieldError with .only()
     users = User.objects.filter(
         id__in=user_ids
-    ).select_related('preferences').only(
+    ).only(
         'id', 'username', 'timezone', 'last_scheduled_time', 'midnight_utc'
     ).iterator(chunk_size=10)
     
@@ -167,7 +168,8 @@ def fetch_and_save_daily_prayer_times(user_id, date):
     """
     try:
         # Only get the user fields we need
-        user = User.objects.select_related('prayer_method').only(
+        # Removed select_related('prayer_method') to avoid FieldError with .only()
+        user = User.objects.only(
             'id', 'username', 'city', 'country'
         ).get(pk=user_id)
         

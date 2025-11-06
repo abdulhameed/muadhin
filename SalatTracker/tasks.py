@@ -256,7 +256,8 @@ def send_sms(phone_number, message):
 def send_daily_prayer_message(user_id):
     """Send daily prayer message using the new provider system"""
     try:
-        user = User.objects.select_related('preferences').only(
+        # Removed select_related('preferences') to avoid FieldError with .only()
+        user = User.objects.only(
             'id', 'username', 'email', 'phone_number', 'whatsapp_number'
         ).get(id=user_id)
         
