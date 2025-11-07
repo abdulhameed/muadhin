@@ -9,6 +9,8 @@ services:
     networks:
       - muadhin_network
     restart: unless-stopped
+    sysctls:
+      - net.core.somaxconn=511
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s

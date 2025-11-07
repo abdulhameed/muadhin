@@ -71,22 +71,40 @@ def send_activation_email(self, user_id, token, activation_link):
 def check_and_schedule_daily_tasks():
     """
     Optimized version that processes users in chunks to avoid memory issues
+    Now includes check for missing today's prayer times
     """
     now = timezone.now()
-    
-    # Use database filtering instead of loading all users
-    # Only get users that might need scheduling (haven't been scheduled recently)
-    cutoff_time = now - timedelta(hours=23)  # Users not scheduled in last 23 hours
-    
-    # Use values_list to only get the data we need, not full objects
-    user_ids_to_process = User.objects.filter(
-        models.Q(last_scheduled_time__isnull=True) | 
-        models.Q(last_scheduled_time__lt=cutoff_time)
+    today = now.date()
+
+    # Get users who either:
+    # 1. Have never been scheduled (new users)
+    # 2. Don't have prayer times for today
+    # 3. Are within their midnight window and haven't been scheduled in 23+ hours
+
+    # First, get users without today's prayer times
+    users_with_todays_prayers = DailyPrayer.objects.filter(
+        prayer_date=today
+    ).values_list('user_id', flat=True).distinct()
+
+    # Get all user IDs that DON'T have today's prayers or have never been scheduled
+    user_ids_needing_prayers = User.objects.exclude(
+        id__in=users_with_todays_prayers
     ).values_list('id', flat=True)
-    
+
+    # Also add users who haven't been scheduled in 23+ hours (for tomorrow's prayers)
+    cutoff_time = now - timedelta(hours=23)
+    user_ids_for_tomorrow = User.objects.filter(
+        last_scheduled_time__lt=cutoff_time
+    ).values_list('id', flat=True)
+
+    # Combine both sets of user IDs (unique)
+    user_ids_to_process = list(set(user_ids_needing_prayers) | set(user_ids_for_tomorrow))
+
+    logger.info(f"Found {len(user_ids_to_process)} users to process: {len(user_ids_needing_prayers)} missing today's prayers, {len(user_ids_for_tomorrow)} eligible for tomorrow")
+
     # Process users in small chunks to avoid memory issues
     chunk_size = 5  # Process 5 users at a time
-    
+
     for i in range(0, len(user_ids_to_process), chunk_size):
         chunk_ids = user_ids_to_process[i:i + chunk_size]
         process_user_chunk.delay(list(chunk_ids), now.isoformat())
@@ -113,15 +131,26 @@ def process_user_chunk(user_ids, now_iso):
         try:
             # Check if user needs scheduling
             if should_schedule_user(user, now):
-                next_date = now.date() + timedelta(days=1)
-                
+                # Check if user has today's prayer times
+                today = now.date()
+                has_todays_prayers = DailyPrayer.objects.filter(
+                    user=user,
+                    prayer_date=today
+                ).exists()
+
+                # If missing today's prayers, fetch for today; otherwise fetch for tomorrow
+                if not has_todays_prayers:
+                    target_date = today
+                else:
+                    target_date = today + timedelta(days=1)
+
                 # Schedule the prayer times fetch
-                fetch_and_save_daily_prayer_times.delay(user.id, next_date.strftime('%d-%m-%Y'))
-                
+                fetch_and_save_daily_prayer_times.delay(user.id, target_date.strftime('%d-%m-%Y'))
+
                 # Update last scheduled time efficiently
                 User.objects.filter(id=user.id).update(last_scheduled_time=now)
                 processed_count += 1
-                
+
         except Exception as e:
             print(f"❌ Error processing user {user.id}: {str(e)}")
             continue
@@ -131,31 +160,47 @@ def process_user_chunk(user_ids, now_iso):
 def should_schedule_user(user, now):
     """
     Determine if a user needs scheduling based on their timezone and last scheduled time
+    Priority: Always schedule if today's prayer times are missing
     """
     try:
         if not user.timezone:
             return False
-            
+
+        # PRIORITY 1: Always schedule if user has never been scheduled
+        if not user.last_scheduled_time:
+            return True
+
+        # PRIORITY 2: Always schedule if today's prayer times don't exist
+        today = now.date()
+        has_todays_prayers = DailyPrayer.objects.filter(
+            user=user,
+            prayer_date=today
+        ).exists()
+
+        if not has_todays_prayers:
+            return True
+
+        # PRIORITY 3: Only check midnight window if user already has today's prayers
         user_timezone = pytz.timezone(user.timezone)
         user_now = now.astimezone(user_timezone)
-        
+
         # Calculate next midnight in user's timezone
         next_midnight = user_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         next_midnight_utc = next_midnight.astimezone(pytz.utc)
-        
+
         # Check if we're within 1 hour of their next midnight
         time_to_midnight = (next_midnight_utc - now).total_seconds()
-        
+
         # Only schedule if:
         # 1. We're within 1 hour of their midnight (3600 seconds)
         # 2. They haven't been scheduled in the last 23 hours
         if 0 < time_to_midnight < 3600:
             last_scheduled = user.last_scheduled_time
-            if not last_scheduled or (now - last_scheduled) > timedelta(hours=23):
+            if (now - last_scheduled) > timedelta(hours=23):
                 return True
-        
+
         return False
-        
+
     except Exception as e:
         print(f"❌ Error checking schedule for user {user.id}: {str(e)}")
         return False
