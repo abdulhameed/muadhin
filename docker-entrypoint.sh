@@ -106,7 +106,9 @@ case "$1" in
         echo "Starting Celery beat scheduler..."
         # Wait a bit longer for the database to be ready for beat scheduler
         sleep 5
-        run_django_setup
+        # Run only migrations for celery-beat (no static files needed)
+        echo "Applying database migrations..."
+        python manage.py migrate --noinput
         exec celery -A muadhin beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
         ;;
     "flower")
