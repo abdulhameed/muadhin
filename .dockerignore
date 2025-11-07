@@ -92,3 +92,4 @@ flower
 
 # Local development scripts
 setup_db.sh
+.DS_Store
