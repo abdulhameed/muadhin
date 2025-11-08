@@ -65,7 +65,7 @@ class SubscriptionPlan(models.Model):
     adhan_call_audio = models.BooleanField(default=False)
     
     # Additional features
-    max_notifications_per_day = models.IntegerField(default=10)
+    max_notifications_per_day = models.IntegerField(default=15)
     priority_support = models.BooleanField(default=False)
     custom_adhan_sounds = models.BooleanField(default=False)
     

@@ -30,7 +30,7 @@ def setup_basic_plan_action(modeladmin, request, queryset):
             defaults={
                 'name': 'Basic Plan',
                 'price': 0.00,
-                'max_notifications_per_day': 10,
+                'max_notifications_per_day': 15,
                 'features': {
                     'daily_prayer_summary_email': True,
                     'pre_adhan_email': True,
