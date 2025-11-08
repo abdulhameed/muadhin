@@ -37,9 +37,9 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 # Render deployment
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS = [RENDER_EXTERNAL_HOSTNAME, 'localhost', '127.0.0.1', 'api.almuadhin.com']
+    ALLOWED_HOSTS = [RENDER_EXTERNAL_HOSTNAME, 'localhost', '127.0.0.1', 'api.almuadhin.com', 'muadhin-frontend-gold.vercel.app']
 else:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'muadhin.onrender.com', 'api.almuadhin.com']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'muadhin.onrender.com', 'api.almuadhin.com', 'muadhin-frontend-gold.vercel.app']
 
 
 # Application definition
@@ -102,28 +102,6 @@ EMAIL_TEMPLATES = {
     'subscription_expired': 'subscriptions/emails/subscription_expired.html',
     'trial_ending': 'subscriptions/emails/trial_ending.html',
 }
-
-# # Database
-# # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# # Database configuration
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('POSTGRES_DB', 'muadhin_db'),
-#         'USER': os.environ.get('POSTGRES_USER', 'muadhin_user'),
-#         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'muadhin_password'),
-#         'HOST': os.environ.get('POSTGRES_HOST', 'db'),
-#         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-#     }
-# }
 
 # Database Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -294,9 +272,12 @@ CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
     'http://localhost',
     'http://127.0.0.1',
     'https://api.almuadhin.com',
+    'https://muadhin-frontend-gold.vercel.app'
 ]
 
 # Add production domains when deploying
