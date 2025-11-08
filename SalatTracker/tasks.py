@@ -590,13 +590,19 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
 
         # Schedule notifications for each prayer time
         for prayer_time_obj in daily_prayer.prayer_times.all():
-            prayer_datetime = datetime.combine(current_date, prayer_time_obj.prayer_time)
-            notification_time_delta = timezone.timedelta(minutes=user_preferences.notification_time_before_prayer)
-            notification_time = (prayer_datetime - notification_time_delta).time()
+            # Create timezone-aware datetime for the prayer time
+            prayer_datetime = user_timezone.localize(
+                datetime.combine(current_date, prayer_time_obj.prayer_time)
+            )
 
+            # Calculate notification time (timezone-aware)
+            notification_time_delta = timezone.timedelta(minutes=user_preferences.notification_time_before_prayer)
+            notification_datetime = prayer_datetime - notification_time_delta
+
+            # Schedule task with timezone-aware eta
             send_pre_adhan_notification.apply_async(
                 (user_id, prayer_time_obj.prayer_name, prayer_time_obj.prayer_time),
-                eta=datetime.combine(current_date, notification_time)
+                eta=notification_datetime
             )
             
         return {"status": "success", "message": "Notifications scheduled"}
@@ -805,10 +811,13 @@ def schedule_phone_calls_for_day(user_id, date):
     try:
         date = datetime.strptime(date, '%Y-%m-%d').date()
         user = User.objects.get(pk=user_id)
-        
+
+        # Get user's timezone
+        user_timezone = pytz.timezone(user.timezone)
+
         # Ensure user preferences exist
         user_preferences = ensure_user_preferences(user)
-        
+
         try:
             daily_prayer = DailyPrayer.objects.get(user=user, prayer_date=date)
         except DailyPrayer.DoesNotExist:
@@ -818,9 +827,12 @@ def schedule_phone_calls_for_day(user_id, date):
             adhan_audio_url = settings.ADHAN_AUDIO_URL
             for prayer_time_obj in daily_prayer.prayer_times.all():
                 prayer_time = prayer_time_obj.prayer_time
-                call_datetime = datetime.combine(date, prayer_time)
+                # Create timezone-aware datetime for the call
+                call_datetime = user_timezone.localize(
+                    datetime.combine(date, prayer_time)
+                )
                 make_call_and_play_audio.apply_async(
-                    (user.phone_number, adhan_audio_url, user.id), 
+                    (user.phone_number, adhan_audio_url, user.id),
                     eta=call_datetime
                 )
                 
