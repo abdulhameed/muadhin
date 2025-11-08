@@ -57,8 +57,9 @@ def create_test_plans(apps, schema_editor):
             'description': 'Test plan with SMS notifications and phone call for adhan. Complete testing experience with all features.',
             'is_active': True,
             'sort_order': 2,
-            # Daily summaries via email and WhatsApp
+            # Daily summaries via email, SMS, and WhatsApp
             'daily_prayer_summary_email': True,
+            'daily_prayer_summary_sms': True,  # SMS enabled for daily summaries
             'daily_prayer_summary_whatsapp': True,
             # Pre-adhan notifications via SMS
             'pre_adhan_email': True,
