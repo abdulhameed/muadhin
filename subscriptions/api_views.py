@@ -153,13 +153,32 @@ class UserSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(subscription)
             return Response(serializer.data)
         except UserSubscription.DoesNotExist:
-            # Return basic plan info
-            basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
-            return Response({
-                'plan': SubscriptionPlanSerializer(basic_plan).data,
-                'status': 'basic',
-                'message': 'Using free basic plan'
-            })
+            # Return active basic plan info
+            basic_plan = SubscriptionPlan.objects.filter(
+                plan_type='basic',
+                country='GLOBAL',
+                price=0.00,
+                is_active=True
+            ).first()
+
+            if not basic_plan:
+                # Fallback to any active basic plan
+                basic_plan = SubscriptionPlan.objects.filter(
+                    plan_type='basic',
+                    is_active=True
+                ).order_by('price').first()
+
+            if basic_plan:
+                return Response({
+                    'plan': SubscriptionPlanSerializer(basic_plan).data,
+                    'status': 'basic',
+                    'message': 'Using free basic plan'
+                })
+            else:
+                return Response({
+                    'error': 'No active basic plan available',
+                    'message': 'Please contact support to activate your account'
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     
     @action(detail=False, methods=['post'])
     def subscribe(self, request):

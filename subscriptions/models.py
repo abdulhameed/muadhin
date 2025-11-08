@@ -54,6 +54,7 @@ class SubscriptionPlan(models.Model):
     
     # Feature flags for notifications
     daily_prayer_summary_email = models.BooleanField(default=True)
+    daily_prayer_summary_sms = models.BooleanField(default=False)
     daily_prayer_summary_whatsapp = models.BooleanField(default=False)
     
     pre_adhan_email = models.BooleanField(default=True)
@@ -88,6 +89,8 @@ class SubscriptionPlan(models.Model):
         features = []
         if self.daily_prayer_summary_email:
             features.append("Daily Prayer Summary (Email)")
+        if self.daily_prayer_summary_sms:
+            features.append("Daily Prayer Summary (SMS)")
         if self.daily_prayer_summary_whatsapp:
             features.append("Daily Prayer Summary (WhatsApp)")
         if self.pre_adhan_email:

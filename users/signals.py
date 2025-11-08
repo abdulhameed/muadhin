@@ -65,13 +65,15 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
                 basic_plan = SubscriptionPlan.objects.filter(
                     plan_type='basic',
                     country='GLOBAL',
-                    price=0.00
+                    price=0.00,
+                    is_active=True
                 ).first()
 
                 if not basic_plan:
-                    # If no free global plan, get the cheapest basic plan
+                    # If no free global plan, get the cheapest active basic plan
                     basic_plan = SubscriptionPlan.objects.filter(
-                        plan_type='basic'
+                        plan_type='basic',
+                        is_active=True
                     ).order_by('price').first()
 
                 if not basic_plan:
