@@ -671,11 +671,19 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
                     success=True
                 )
                 
+                # Handle different result types (dict vs object)
+                if isinstance(result, dict):
+                    provider = result.get("provider", "email")
+                    message_id = result.get("message_id")
+                else:
+                    provider = result.provider_name if result else "email"
+                    message_id = result.message_id if result else None
+
                 return {
-                    "status": "success", 
+                    "status": "success",
                     "method": method,
-                    "provider": result.provider_name if result else "email",
-                    "message_id": result.message_id if result else None
+                    "provider": provider,
+                    "message_id": message_id
                 }
             else:
                 NotificationUsage.objects.create(
