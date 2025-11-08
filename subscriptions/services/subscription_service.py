@@ -18,11 +18,28 @@ class SubscriptionService:
             pass
 
         # Return basic plan as default, or None if it doesn't exist
-        try:
-            return SubscriptionPlan.objects.get(plan_type='basic')
-        except SubscriptionPlan.DoesNotExist:
-            # Return the first available plan or None
-            return SubscriptionPlan.objects.filter(is_active=True).first()
+        # Use filter().first() to handle multiple basic plans (e.g., different countries)
+        basic_plan = SubscriptionPlan.objects.filter(
+            plan_type='basic',
+            country='GLOBAL',
+            price=0.00,
+            is_active=True
+        ).first()
+
+        if basic_plan:
+            return basic_plan
+
+        # Fallback to any basic plan
+        basic_plan = SubscriptionPlan.objects.filter(
+            plan_type='basic',
+            is_active=True
+        ).order_by('price').first()
+
+        if basic_plan:
+            return basic_plan
+
+        # Return the first available plan or None
+        return SubscriptionPlan.objects.filter(is_active=True).first()
     
     @staticmethod
     def can_user_access_feature(user, feature_name):
@@ -31,20 +48,46 @@ class SubscriptionService:
             subscription = user.subscription
             if not subscription.is_active:
                 # Fall back to basic plan features
-                try:
-                    basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+                basic_plan = SubscriptionPlan.objects.filter(
+                    plan_type='basic',
+                    country='GLOBAL',
+                    price=0.00,
+                    is_active=True
+                ).first()
+
+                if not basic_plan:
+                    # Try any basic plan
+                    basic_plan = SubscriptionPlan.objects.filter(
+                        plan_type='basic',
+                        is_active=True
+                    ).order_by('price').first()
+
+                if basic_plan:
                     return getattr(basic_plan, feature_name, False)
-                except SubscriptionPlan.DoesNotExist:
+                else:
                     # No basic plan exists, deny access to premium features
                     return False
 
             return subscription.can_use_feature(feature_name)
         except UserSubscription.DoesNotExist:
             # User has no subscription, check basic plan
-            try:
-                basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+            basic_plan = SubscriptionPlan.objects.filter(
+                plan_type='basic',
+                country='GLOBAL',
+                price=0.00,
+                is_active=True
+            ).first()
+
+            if not basic_plan:
+                # Try any basic plan
+                basic_plan = SubscriptionPlan.objects.filter(
+                    plan_type='basic',
+                    is_active=True
+                ).order_by('price').first()
+
+            if basic_plan:
                 return getattr(basic_plan, feature_name, False)
-            except SubscriptionPlan.DoesNotExist:
+            else:
                 # No basic plan exists, deny access to premium features
                 return False
     
@@ -99,9 +142,13 @@ class SubscriptionService:
         except UserSubscription.DoesNotExist:
             subscription = None
 
-        try:
-            premium_plan = SubscriptionPlan.objects.get(plan_type=plan_type)
-        except SubscriptionPlan.DoesNotExist:
+        # Use filter().first() to avoid MultipleObjectsReturned error
+        premium_plan = SubscriptionPlan.objects.filter(
+            plan_type=plan_type,
+            is_active=True
+        ).order_by('price').first()
+
+        if not premium_plan:
             raise ValidationError(f"No {plan_type} plan available. Please create a subscription plan first.")
 
         if subscription:
