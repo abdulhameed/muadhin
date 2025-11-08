@@ -28,6 +28,10 @@ class CustomUser(AbstractUser):
     midnight_utc = models.TimeField(null=True, blank=True)
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
     twitter_handle = models.CharField(max_length=16, blank=True, null=True)
+    receive_notifications = models.BooleanField(
+        default=True,
+        help_text="Whether to fetch prayer times and send notifications to this user"
+    )
         
     def __str__(self):
         return self.username

@@ -1,9 +1,10 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 from .models import UserPreferences, PrayerMethod, PrayerOffset
 from subscriptions.models import SubscriptionPlan, UserSubscription
-from datetime import date, timedelta
 
 
 User = get_user_model()
@@ -97,12 +98,14 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
                 )
             
             # Create user subscription with basic plan
+            # New users get 1 month free trial, then subscription expires
             UserSubscription.objects.get_or_create(
                 user=instance,
                 defaults={
                     'plan': basic_plan,
                     'status': 'active',
-                    'end_date': None,  # Basic plan never expires (lifetime)
+                    'start_date': timezone.now(),
+                    'end_date': timezone.now() + timedelta(days=30),  # 1-month free trial for new users
                 }
             )
             
@@ -111,46 +114,6 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
         except Exception as e:
             print(f"❌ Error creating user profile for {instance.username}: {str(e)}")
 
-
-@receiver(post_save, sender=User)
-def create_user_essentials(sender, instance, created, **kwargs):
-    """
-    Create essential user preferences when a new user is created.
-    This prevents celery task failures due to missing UserPreferences.
-    """
-    if created:
-        try:
-            from .models import UserPreferences, PrayerMethod
-            
-            # Create UserPreferences with safe email-only defaults
-            UserPreferences.objects.get_or_create(
-                user=instance,
-                defaults={
-                    'daily_prayer_summary_enabled': True,
-                    'daily_prayer_summary_message_method': 'email',
-                    'notification_before_prayer_enabled': True,
-                    'notification_before_prayer': 'email',
-                    'notification_time_before_prayer': 15,
-                    'adhan_call_enabled': True,
-                    'adhan_call_method': 'email',
-                    'notification_methods': 'email',
-                }
-            )
-            
-            # Create PrayerMethod with default
-            PrayerMethod.objects.get_or_create(
-                user=instance,
-                defaults={
-                    'sn': 1,
-                    'name': 'Muslim World League'
-                }
-            )
-            
-            print(f"✅ Created user essentials for: {instance.username}")
-            
-        except Exception as e:
-            print(f"❌ Error creating user essentials for {instance.username}: {str(e)}")
-            
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):

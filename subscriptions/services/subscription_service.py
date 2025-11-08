@@ -16,9 +16,13 @@ class SubscriptionService:
                 return subscription.plan
         except UserSubscription.DoesNotExist:
             pass
-        
-        # Return basic plan as default
-        return SubscriptionPlan.objects.get(plan_type='basic')
+
+        # Return basic plan as default, or None if it doesn't exist
+        try:
+            return SubscriptionPlan.objects.get(plan_type='basic')
+        except SubscriptionPlan.DoesNotExist:
+            # Return the first available plan or None
+            return SubscriptionPlan.objects.filter(is_active=True).first()
     
     @staticmethod
     def can_user_access_feature(user, feature_name):
@@ -27,14 +31,22 @@ class SubscriptionService:
             subscription = user.subscription
             if not subscription.is_active:
                 # Fall back to basic plan features
-                basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
-                return getattr(basic_plan, feature_name, False)
-            
+                try:
+                    basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+                    return getattr(basic_plan, feature_name, False)
+                except SubscriptionPlan.DoesNotExist:
+                    # No basic plan exists, deny access to premium features
+                    return False
+
             return subscription.can_use_feature(feature_name)
         except UserSubscription.DoesNotExist:
             # User has no subscription, check basic plan
-            basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
-            return getattr(basic_plan, feature_name, False)
+            try:
+                basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+                return getattr(basic_plan, feature_name, False)
+            except SubscriptionPlan.DoesNotExist:
+                # No basic plan exists, deny access to premium features
+                return False
     
     @staticmethod
     def upgrade_user_plan(user, new_plan, payment_method=None):
@@ -59,7 +71,7 @@ class SubscriptionService:
         subscription.plan = new_plan
         subscription.status = 'active'
         subscription.start_date = timezone.now()
-        
+
         # Set end date based on billing cycle
         if new_plan.billing_cycle == 'monthly':
             subscription.end_date = timezone.now() + timedelta(days=30)
@@ -67,8 +79,14 @@ class SubscriptionService:
             subscription.end_date = timezone.now() + timedelta(days=365)
         else:  # lifetime
             subscription.end_date = None
-        
+
         subscription.save()
+
+        # Re-enable notifications if they were disabled due to expiry
+        if not user.receive_notifications:
+            user.receive_notifications = True
+            user.save(update_fields=['receive_notifications'])
+
         return subscription
     
     @staticmethod
@@ -80,9 +98,12 @@ class SubscriptionService:
                 raise ValidationError("User is already on trial")
         except UserSubscription.DoesNotExist:
             subscription = None
-        
-        premium_plan = SubscriptionPlan.objects.get(plan_type=plan_type)
-        
+
+        try:
+            premium_plan = SubscriptionPlan.objects.get(plan_type=plan_type)
+        except SubscriptionPlan.DoesNotExist:
+            raise ValidationError(f"No {plan_type} plan available. Please create a subscription plan first.")
+
         if subscription:
             subscription.plan = premium_plan
             subscription.start_trial(trial_days)
@@ -93,7 +114,7 @@ class SubscriptionService:
                 status='trial',
                 trial_end_date=timezone.now() + timedelta(days=trial_days)
             )
-        
+
         return subscription
     
     @staticmethod

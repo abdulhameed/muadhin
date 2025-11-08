@@ -15,7 +15,15 @@ app = Celery('muadhin')
 app.conf.beat_schedule = {
     'check_and_schedule_daily_tasks': {
         'task': 'users.tasks.check_and_schedule_daily_tasks',
-        'schedule': crontab(minute=0, hour='*/1'),  # Run every 30 minutes
+        'schedule': crontab(minute=0, hour='*/1'),  # Run every hour
+    },
+    'check_and_expire_subscriptions': {
+        'task': 'subscriptions.tasks.check_and_expire_subscriptions',
+        'schedule': crontab(minute=0, hour=0),  # Run daily at midnight UTC
+    },
+    'send_subscription_expiry_warnings': {
+        'task': 'subscriptions.tasks.send_expiry_warnings',
+        'schedule': crontab(minute=0, hour=9),  # Run daily at 9 AM UTC
     },
 }
 
