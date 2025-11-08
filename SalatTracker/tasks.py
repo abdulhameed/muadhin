@@ -138,6 +138,11 @@ def fetch_and_save_daily_prayer_times(user_id, date):
     """
     try:
         user = User.objects.get(pk=user_id)
+
+        # Check if user has notifications enabled
+        if not user.receive_notifications:
+            return {"status": "skipped", "reason": "Notifications disabled for user"}
+
         prayer_method = ensure_prayer_method(user)
 
         api_url = "http://api.aladhan.com/v1/timingsByCity"
@@ -258,9 +263,13 @@ def send_daily_prayer_message(user_id):
     try:
         # Removed select_related('preferences') to avoid FieldError with .only()
         user = User.objects.only(
-            'id', 'username', 'email', 'phone_number', 'whatsapp_number'
+            'id', 'username', 'email', 'phone_number', 'whatsapp_number', 'receive_notifications'
         ).get(id=user_id)
-        
+
+        # Check if user has notifications enabled
+        if not user.receive_notifications:
+            return {"status": "skipped", "reason": "Notifications disabled for user"}
+
         # Check if user can send notifications efficiently
         if not user.can_send_notification('daily_summary'):
             return {"status": "skipped", "reason": "Daily limit reached"}
@@ -562,6 +571,11 @@ def schedule_notifications_for_day(user_id, gregorian_date_formatted):
     """
     try:
         user = User.objects.get(pk=user_id)
+
+        # Check if user has notifications enabled
+        if not user.receive_notifications:
+            return {"status": "skipped", "reason": "Notifications disabled for user"}
+
         user_timezone = pytz.timezone(user.timezone)
         current_date = user_timezone.localize(datetime.strptime(gregorian_date_formatted, '%Y-%m-%d')).date()
 
@@ -599,7 +613,11 @@ def send_pre_adhan_notification(user_id, prayer_name, prayer_time):
     """Send pre-adhan notification using the new provider system"""
     try:
         user = User.objects.get(pk=user_id)
-        
+
+        # Check if user has notifications enabled
+        if not user.receive_notifications:
+            return {"status": "skipped", "reason": "Notifications disabled for user"}
+
         # Check if user can send notifications
         if not user.can_send_notification('pre_adhan'):
             return {"status": "skipped", "reason": "Daily limit reached"}
@@ -812,7 +830,11 @@ def make_call_and_play_audio(recipient_phone_number, audio_url, user_id):
     """Make adhan call using the new provider system"""
     try:
         user = User.objects.get(pk=user_id)
-        
+
+        # Check if user has notifications enabled
+        if not user.receive_notifications:
+            return {"status": "skipped", "reason": "Notifications disabled for user"}
+
         # Check if user's plan supports audio calls
         if not user.has_feature('adhan_call_audio'):
             # Check if text call is available
