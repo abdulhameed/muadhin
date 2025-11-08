@@ -94,7 +94,7 @@ def create_user_profile_and_subscription(sender, instance, created, **kwargs):
                     daily_prayer_summary_email=True,
                     pre_adhan_email=True,
                     adhan_call_text=False,
-                    max_notifications_per_day=10,
+                    max_notifications_per_day=15,
                     priority_support=False,
                     custom_adhan_sounds=False,
                 )

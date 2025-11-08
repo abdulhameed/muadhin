@@ -322,7 +322,7 @@ def get_user_subscription_info(user):
                 'price': float(plan.price) if plan.price else 0.0,
                 'status': subscription.status,
                 'is_trial': getattr(subscription, 'is_trial', False),
-                'max_notifications': getattr(plan, 'max_notifications_per_day', 10)
+                'max_notifications': getattr(plan, 'max_notifications_per_day', 15)
             }
     except Exception:
         pass
@@ -334,5 +334,5 @@ def get_user_subscription_info(user):
         'price': 0.0,
         'status': 'active',
         'is_trial': False,
-        'max_notifications': 10
+        'max_notifications': 15
     }
