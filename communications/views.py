@@ -9,6 +9,7 @@ from datetime import timedelta
 from .services.provider_registry import ProviderRegistry
 from .services.notification_service import NotificationService
 from .models import CommunicationLog, ProviderStatus
+from .utils.country_codes import get_country_code
 
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -27,7 +28,8 @@ class ProviderStatusAPIView(APIView):
     def get(self, request):
         """Get provider status for user's country"""
         user = request.user
-        country_code = getattr(user, 'country', 'US')[:2].upper()
+        country_raw = getattr(user, 'country', 'NG')
+        country_code = get_country_code(country_raw)
         
         # Get providers for user's country
         providers = ProviderRegistry.get_providers_for_country(country_code)

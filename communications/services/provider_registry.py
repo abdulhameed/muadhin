@@ -28,19 +28,21 @@ class ProviderRegistry:
         try:
             # Get provider configurations from settings
             provider_configs = getattr(settings, 'COMMUNICATION_PROVIDERS', {})
-            
-            # Initialize Twilio (always available as fallback)
-            twilio_config = provider_configs.get('twilio', {
-                'account_sid': getattr(settings, 'TWILIO_ACCOUNT_SID', ''),
-                'auth_token': getattr(settings, 'TWILIO_AUTH_TOKEN', ''),
-                'phone_number': getattr(settings, 'TWILIO_PHONE_NUMBER', ''),
-                'whatsapp_number': getattr(settings, 'TWILIO_WHATSAPP_NUMBER', ''),
-                'debug_mode': getattr(settings, 'DEBUG', True)
-            })
-            
-            if twilio_config.get('account_sid'):
-                cls._providers['twilio'] = TwilioProvider(twilio_config)
-                logger.info("✅ Twilio provider initialized")
+
+            # DISABLED: Twilio provider (using Africa's Talking exclusively)
+            # Twilio was causing failures with account/number mismatch
+            # Uncomment below if you need to re-enable Twilio
+            # twilio_config = provider_configs.get('twilio', {
+            #     'account_sid': getattr(settings, 'TWILIO_ACCOUNT_SID', ''),
+            #     'auth_token': getattr(settings, 'TWILIO_AUTH_TOKEN', ''),
+            #     'phone_number': getattr(settings, 'TWILIO_PHONE_NUMBER', ''),
+            #     'whatsapp_number': getattr(settings, 'TWILIO_WHATSAPP_NUMBER', ''),
+            #     'debug_mode': getattr(settings, 'DEBUG', True)
+            # })
+            #
+            # if twilio_config.get('account_sid'):
+            #     cls._providers['twilio'] = TwilioProvider(twilio_config)
+            #     logger.info("✅ Twilio provider initialized")
             
             # Initialize Africa's Talking provider (BEST for African countries)
             at_config = provider_configs.get('africastalking', {
@@ -80,43 +82,42 @@ class ProviderRegistry:
                 cls._providers['india'] = IndiaProvider(india_config)
                 logger.info("✅ India provider initialized")
             
-            # Set up country preferences (OPTIMIZED for Nigeria first strategy)
+            # Set up country preferences (OPTIMIZED for Africa with Africa's Talking)
             cls._country_preferences = {
-                # NIGERIA - Primary focus market with Africa's Talking as sole provider
-                'NG': ['africastalking'],  # Nigeria: Africa's Talking ONLY (no fallback)
-                
-                # Other African countries - Africa's Talking first, then Twilio
-                'KE': ['africastalking', 'twilio'],             # Kenya: AT home country
-                'UG': ['africastalking', 'twilio'],             # Uganda: AT strong presence
-                'TZ': ['africastalking', 'twilio'],             # Tanzania: AT coverage
-                'RW': ['africastalking', 'twilio'],             # Rwanda: AT coverage
-                'MW': ['africastalking', 'twilio'],             # Malawi: AT coverage
-                'ZM': ['africastalking', 'twilio'],             # Zambia: AT coverage
-                'GH': ['africastalking', 'nigeria', 'twilio'],  # Ghana: AT > Nigeria > Twilio
-                'CM': ['africastalking', 'twilio'],             # Cameroon: AT coverage
-                'CI': ['africastalking', 'twilio'],             # Côte d'Ivoire: AT coverage
-                'SN': ['africastalking', 'twilio'],             # Senegal: AT coverage
-                'BF': ['africastalking', 'twilio'],             # Burkina Faso: AT coverage
-                'ML': ['africastalking', 'twilio'],             # Mali: AT coverage
-                'NE': ['africastalking', 'twilio'],             # Niger: AT coverage
-                'TD': ['africastalking', 'twilio'],             # Chad: AT coverage
-                
+                # AFRICA - Primary focus market with Africa's Talking
+                'NG': ['africastalking'],       # Nigeria: Africa's Talking ONLY
+                'KE': ['africastalking'],       # Kenya: AT home country
+                'UG': ['africastalking'],       # Uganda: AT strong presence
+                'TZ': ['africastalking'],       # Tanzania: AT coverage
+                'RW': ['africastalking'],       # Rwanda: AT coverage
+                'MW': ['africastalking'],       # Malawi: AT coverage
+                'ZM': ['africastalking'],       # Zambia: AT coverage
+                'GH': ['africastalking', 'nigeria'],  # Ghana: AT > Nigeria provider
+                'CM': ['africastalking'],       # Cameroon: AT coverage
+                'CI': ['africastalking'],       # Côte d'Ivoire: AT coverage
+                'SN': ['africastalking'],       # Senegal: AT coverage
+                'BF': ['africastalking'],       # Burkina Faso: AT coverage
+                'ML': ['africastalking'],       # Mali: AT coverage
+                'NE': ['africastalking'],       # Niger: AT coverage
+                'TD': ['africastalking'],       # Chad: AT coverage
+
                 # Asian countries - For future expansion
-                'IN': ['india', 'twilio'],      # India: local first
-                'BD': ['india', 'twilio'],      # Bangladesh: can use India
-                'LK': ['india', 'twilio'],      # Sri Lanka: can use India
-                'NP': ['india', 'twilio'],      # Nepal: can use India
-                
-                # Future expansion countries - Twilio for now
-                'GB': ['twilio'],               # UK: Future expansion
-                'CA': ['twilio'],               # Canada: Future expansion
-                'AU': ['twilio'],               # Australia: Future expansion
-                'AE': ['twilio'],               # UAE: Future expansion
-                'SA': ['twilio'],               # Saudi Arabia: Future expansion
-                'QA': ['twilio'],               # Qatar: Future expansion
-                'US': ['twilio'],               # USA: Twilio
-                'DE': ['twilio'],               # Germany: Twilio
-                'FR': ['twilio'],               # France: Twilio
+                'IN': ['india'],      # India: local provider
+                'BD': ['india'],      # Bangladesh: can use India
+                'LK': ['india'],      # Sri Lanka: can use India
+                'NP': ['india'],      # Nepal: can use India
+
+                # Other countries - will need provider setup in future
+                # For now, they'll get Africa's Talking if available via fallback logic
+                'GB': ['africastalking'],       # UK
+                'CA': ['africastalking'],       # Canada
+                'AU': ['africastalking'],       # Australia
+                'AE': ['africastalking'],       # UAE
+                'SA': ['africastalking'],       # Saudi Arabia
+                'QA': ['africastalking'],       # Qatar
+                'US': ['africastalking'],       # USA
+                'DE': ['africastalking'],       # Germany
+                'FR': ['africastalking'],       # France
             }
             
             cls._initialized = True
@@ -124,9 +125,9 @@ class ProviderRegistry:
             
         except Exception as e:
             logger.error(f"❌ Error initializing provider registry: {e}")
-            # Ensure at least basic Twilio fallback works
-            if 'twilio' not in cls._providers:
-                cls._providers['twilio'] = TwilioProvider({'debug_mode': True})
+            # DISABLED: Twilio fallback (using Africa's Talking exclusively)
+            # if 'twilio' not in cls._providers:
+            #     cls._providers['twilio'] = TwilioProvider({'debug_mode': True})
 
     
     @classmethod
@@ -143,8 +144,8 @@ class ProviderRegistry:
             cls.initialize()
         
         provider_names = cls._country_preferences.get(
-            country_code.upper(), 
-            ['twilio']  # Default to Twilio
+            country_code.upper(),
+            ['africastalking']  # Default to Africa's Talking
         )
         
         providers = []
@@ -153,12 +154,11 @@ class ProviderRegistry:
             if provider and provider.is_configured:
                 providers.append(provider)
 
-        # Only add Twilio fallback if no providers were found AND country wants fallback
-        # Nigeria (NG) explicitly doesn't want Twilio fallback
-        if not providers and country_code.upper() != 'NG':
-            twilio = cls._providers.get('twilio')
-            if twilio and twilio.is_configured:
-                providers.append(twilio)
+        # Fallback to Africa's Talking if no providers were found
+        if not providers:
+            at_provider = cls._providers.get('africastalking')
+            if at_provider and at_provider.is_configured:
+                providers.append(at_provider)
 
         return providers
     
