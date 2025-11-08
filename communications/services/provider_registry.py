@@ -82,8 +82,8 @@ class ProviderRegistry:
             
             # Set up country preferences (OPTIMIZED for Nigeria first strategy)
             cls._country_preferences = {
-                # NIGERIA - Primary focus market with multiple provider options
-                'NG': ['nigeria', 'africastalking', 'twilio'],  # Nigeria: Local > AT > Twilio (optimized)
+                # NIGERIA - Primary focus market with Africa's Talking as sole provider
+                'NG': ['africastalking'],  # Nigeria: Africa's Talking ONLY (no fallback)
                 
                 # Other African countries - Africa's Talking first, then Twilio
                 'KE': ['africastalking', 'twilio'],             # Kenya: AT home country
@@ -152,12 +152,14 @@ class ProviderRegistry:
             provider = cls._providers.get(name)
             if provider and provider.is_configured:
                 providers.append(provider)
-        
-        # Always ensure Twilio is available as final fallback
-        twilio = cls._providers.get('twilio')
-        if twilio and twilio not in providers:
-            providers.append(twilio)
-        
+
+        # Only add Twilio fallback if no providers were found AND country wants fallback
+        # Nigeria (NG) explicitly doesn't want Twilio fallback
+        if not providers and country_code.upper() != 'NG':
+            twilio = cls._providers.get('twilio')
+            if twilio and twilio.is_configured:
+                providers.append(twilio)
+
         return providers
     
     @classmethod

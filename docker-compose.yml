@@ -79,6 +79,12 @@ services:
       - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Africa's Talking Configuration
+      - AFRICASTALKING_USERNAME=${AFRICASTALKING_USERNAME}
+      - AFRICASTALKING_API_KEY=${AFRICASTALKING_API_KEY}
+      - AFRICASTALKING_SENDER_ID=${AFRICASTALKING_SENDER_ID:-}
+      - AFRICASTALKING_PHONE_NUMBER=${AFRICASTALKING_PHONE_NUMBER}
+      - AFRICASTALKING_CALLER_ID=${AFRICASTALKING_CALLER_ID}
     depends_on:
       db:
         condition: service_healthy
@@ -101,6 +107,12 @@ services:
       - DATABASE_URL=postgresql://muadhin_user:muadhin_password@db:5432/muadhin_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Africa's Talking Configuration
+      - AFRICASTALKING_USERNAME=${AFRICASTALKING_USERNAME}
+      - AFRICASTALKING_API_KEY=${AFRICASTALKING_API_KEY}
+      - AFRICASTALKING_SENDER_ID=${AFRICASTALKING_SENDER_ID:-}
+      - AFRICASTALKING_PHONE_NUMBER=${AFRICASTALKING_PHONE_NUMBER}
+      - AFRICASTALKING_CALLER_ID=${AFRICASTALKING_CALLER_ID}
     depends_on:
       db:
         condition: service_healthy
