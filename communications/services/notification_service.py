@@ -5,6 +5,7 @@ import logging
 from .provider_registry import ProviderRegistry
 from ..providers.base import CommunicationResult, SMSProvider, CallProvider, WhatsAppProvider
 from subscriptions.models import NotificationUsage
+from ..utils.country_codes import get_country_code
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ class NotificationService:
     @staticmethod
     def send_sms(user, message: str, log_usage: bool = True, preferred_provider: str = None) -> CommunicationResult:
         """Send SMS using the best available provider for user's country"""
-        country_code = getattr(user, 'country', 'US')[:2].upper()
+        country_raw = getattr(user, 'country', 'NG')
+        country_code = get_country_code(country_raw)
         phone_number = getattr(user, 'phone_number', '')
         
         if not phone_number:
@@ -107,7 +109,8 @@ class NotificationService:
     @staticmethod
     def make_call(user, audio_url: str, log_usage: bool = True) -> CommunicationResult:
         """Make voice call using the best available provider"""
-        country_code = getattr(user, 'country', 'US')[:2].upper()
+        country_raw = getattr(user, 'country', 'NG')
+        country_code = get_country_code(country_raw)
         phone_number = getattr(user, 'phone_number', '')
         
         if not phone_number:
@@ -170,7 +173,8 @@ class NotificationService:
     @staticmethod
     def make_text_call(user, text_message: str, log_usage: bool = True) -> CommunicationResult:
         """Make text-to-speech call using the best available provider"""
-        country_code = getattr(user, 'country', 'US')[:2].upper()
+        country_raw = getattr(user, 'country', 'NG')
+        country_code = get_country_code(country_raw)
         phone_number = getattr(user, 'phone_number', '')
         
         if not phone_number:
@@ -219,7 +223,8 @@ class NotificationService:
     @staticmethod
     def send_whatsapp(user, message: str, log_usage: bool = True) -> CommunicationResult:
         """Send WhatsApp message using the best available provider"""
-        country_code = getattr(user, 'country', 'US')[:2].upper()
+        country_raw = getattr(user, 'country', 'NG')
+        country_code = get_country_code(country_raw)
         whatsapp_number = getattr(user, 'whatsapp_number', '') or getattr(user, 'phone_number', '')
         
         if not whatsapp_number:
