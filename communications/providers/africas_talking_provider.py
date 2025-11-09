@@ -171,20 +171,20 @@ class AfricasTalkingProvider(CombinedProvider):
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
 
-            # Build callback URL that will serve the XML response with audio
-            # The callback endpoint will return XML with <Play url="..."/>
-            callback_base_url = self.config.get(
+            # Store audio URL in cache for callback to retrieve
+            # AT strips query params, so we use cache with phone number as key
+            from django.core.cache import cache
+            cache_key = f"at_voice_call_{formatted_number}"
+            cache.set(cache_key, {
+                'audio_url': audio_url,
+                'call_type': 'adhan_audio'
+            }, timeout=600)  # 10 minutes
+
+            # Build callback URL (without parameters - AT strips them anyway)
+            callback_url = self.config.get(
                 'voice_callback_url',
                 'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
             )
-
-            # Add parameters to callback URL
-            from urllib.parse import urlencode
-            callback_params = {
-                'callType': 'adhan_audio',
-                'audioUrl': audio_url
-            }
-            callback_url = f"{callback_base_url}?{urlencode(callback_params)}"
 
             payload = {
                 'username': self.config['username'],
@@ -195,7 +195,8 @@ class AfricasTalkingProvider(CombinedProvider):
 
             logger.info(f"🔔 Making AT voice call to {clean_number}:")
             logger.info(f"   Callback URL: {callback_url}")
-            logger.info(f"   Payload: {payload}")
+            logger.info(f"   Audio URL stored in cache: {audio_url}")
+            logger.info(f"   Cache key: {cache_key}")
 
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
 
@@ -266,19 +267,19 @@ class AfricasTalkingProvider(CombinedProvider):
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
 
-            # Build callback URL for text-to-speech
-            callback_base_url = self.config.get(
+            # Store TTS message in cache for callback to retrieve
+            from django.core.cache import cache
+            cache_key = f"at_voice_call_{formatted_number}"
+            cache.set(cache_key, {
+                'message': text_message,
+                'call_type': 'tts'
+            }, timeout=600)  # 10 minutes
+
+            # Build callback URL (without parameters)
+            callback_url = self.config.get(
                 'voice_callback_url',
                 'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
             )
-
-            # Add parameters to callback URL
-            from urllib.parse import urlencode
-            callback_params = {
-                'callType': 'default',
-                'message': text_message
-            }
-            callback_url = f"{callback_base_url}?{urlencode(callback_params)}"
 
             payload = {
                 'username': self.config['username'],

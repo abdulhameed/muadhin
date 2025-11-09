@@ -264,56 +264,68 @@ def africas_talking_voice_callback(request):
     Callback endpoint for Africa's Talking voice calls
     This serves the TTS/Audio XML response
     """
+    from django.core.cache import cache
+
     # Log ALL parameters received
     logger.info(f"🔔 VOICE CALLBACK TRIGGERED!")
     logger.info(f"   GET params: {dict(request.GET)}")
     logger.info(f"   POST params: {dict(request.POST)}")
 
     # Get parameters from Africa's Talking
-    session_id = request.GET.get('sessionId')
-    phone_number = request.GET.get('phoneNumber')
+    session_id = request.GET.get('sessionId') or request.POST.get('sessionId')
+    phone_number = request.GET.get('callerNumber') or request.POST.get('callerNumber')
 
-    # You can customize the response based on the call type
-    call_type = request.GET.get('callType', 'adhan')  # Custom parameter
+    logger.info(f"   Session: {session_id}, Phone: {phone_number}")
 
-    logger.info(f"   Session: {session_id}, Phone: {phone_number}, CallType: {call_type}")
-    
-    if call_type == 'adhan_audio':
-        # Serve audio Adhan
-        audio_url = request.GET.get('audioUrl', 'https://media.sd.ma/assabile/adhan_3435370/0bf83c80b583.mp3')
-        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+    # Retrieve call data from cache using phone number
+    cache_key = f"at_voice_call_{phone_number}"
+    call_data = cache.get(cache_key)
+
+    logger.info(f"   Cache key: {cache_key}")
+    logger.info(f"   Cache data: {call_data}")
+
+    if call_data:
+        call_type = call_data.get('call_type')
+
+        if call_type == 'adhan_audio':
+            # Serve audio Adhan
+            audio_url = call_data.get('audio_url')
+            logger.info(f"   🕌 Playing adhan audio: {audio_url}")
+            xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">Assalamu Alaikum. It is time for prayer.</Say>
             <Play url="{audio_url}"/>
             <Say voice="woman">May Allah accept your prayers.</Say>
         </Response>'''
-    
-    elif call_type == 'adhan_text':
-        # Serve TTS Adhan
-        prayer_name = request.GET.get('prayerName', 'prayer')
-        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-            <Say voice="woman">Assalamu Alaikum. It is time for {prayer_name} prayer.</Say>
-            <Say voice="woman">Allahu Akbar. Allahu Akbar. Allahu Akbar. Allahu Akbar.</Say>
-            <Say voice="woman">Ash-hadu an la ilaha illa Allah.</Say>
-            <Say voice="woman">Ash-hadu anna Muhammadan Rasul Allah.</Say>
-            <Say voice="woman">Hayya 'ala-s-Salah.</Say>
-            <Say voice="woman">Hayya 'ala-l-Falah.</Say>
-            <Say voice="woman">Allahu Akbar. Allahu Akbar.</Say>
-            <Say voice="woman">La ilaha illa Allah.</Say>
-            <Say voice="woman">May Allah accept your prayers.</Say>
-        </Response>'''
-    
-    else:
-        # Default response
-        message = request.GET.get('message', 'This is a test call from Muadhin.')
-        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+
+        elif call_type == 'tts':
+            # Serve TTS message
+            message = call_data.get('message', 'This is a message from Muadhin.')
+            xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">{message}</Say>
         </Response>'''
-    
-    logger.info(f"Voice callback for {phone_number}, session {session_id}")
-    
+
+        else:
+            # Unknown call type
+            xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">This is a test call from Muadhin.</Say>
+        </Response>'''
+
+        # Clear cache after use
+        cache.delete(cache_key)
+
+    else:
+        # No cache data - default response
+        logger.warning(f"   ⚠️ No cache data found for {phone_number}")
+        xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">This is a test call from Muadhin.</Say>
+        </Response>'''
+
+    logger.info(f"   Returning XML response")
+
     return HttpResponse(xml_response, content_type='application/xml')
 
 
