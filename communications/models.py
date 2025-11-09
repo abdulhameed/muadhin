@@ -163,5 +163,39 @@ class ProviderStatus(models.Model):
             self.consecutive_failures < 5 and  # Less than 5 consecutive failures
             self.success_rate >= 80.0  # At least 80% success rate
         )
-        
+
         self.save()
+
+
+class VoiceCallSession(models.Model):
+    """Store voice call session data for callback retrieval"""
+
+    phone_number = models.CharField(max_length=20, db_index=True)
+    session_id = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+
+    # Call data
+    call_type = models.CharField(max_length=20)  # 'adhan_audio', 'tts', etc.
+    audio_url = models.URLField(null=True, blank=True)
+    message = models.TextField(null=True, blank=True)
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    retrieved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['phone_number', 'created_at']),
+            models.Index(fields=['session_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.call_type}"
+
+    @classmethod
+    def cleanup_old_sessions(cls):
+        """Delete sessions older than 1 hour"""
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(hours=1)
+        cls.objects.filter(created_at__lt=cutoff).delete()
