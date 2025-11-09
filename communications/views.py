@@ -264,12 +264,19 @@ def africas_talking_voice_callback(request):
     Callback endpoint for Africa's Talking voice calls
     This serves the TTS/Audio XML response
     """
+    # Log ALL parameters received
+    logger.info(f"🔔 VOICE CALLBACK TRIGGERED!")
+    logger.info(f"   GET params: {dict(request.GET)}")
+    logger.info(f"   POST params: {dict(request.POST)}")
+
     # Get parameters from Africa's Talking
     session_id = request.GET.get('sessionId')
     phone_number = request.GET.get('phoneNumber')
-    
+
     # You can customize the response based on the call type
     call_type = request.GET.get('callType', 'adhan')  # Custom parameter
+
+    logger.info(f"   Session: {session_id}, Phone: {phone_number}, CallType: {call_type}")
     
     if call_type == 'adhan_audio':
         # Serve audio Adhan
@@ -308,3 +315,35 @@ def africas_talking_voice_callback(request):
     logger.info(f"Voice callback for {phone_number}, session {session_id}")
     
     return HttpResponse(xml_response, content_type='application/xml')
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def africas_talking_voice_events(request):
+    """
+    Callback endpoint for Africa's Talking voice call status events
+    Receives notifications about call status: ringing, answered, completed, failed, etc.
+    """
+    try:
+        # Africa's Talking sends these parameters
+        is_active = request.POST.get('isActive')  # 0 = call ended, 1 = call active
+        session_id = request.POST.get('sessionId')
+        phone_number = request.POST.get('callerNumber') or request.POST.get('phoneNumber')
+        direction = request.POST.get('direction')  # Inbound or Outbound
+        status = request.POST.get('status')  # Answered, Ringing, Completed, Failed
+        duration = request.POST.get('durationInSeconds')
+        currency_code = request.POST.get('currencyCode')
+        amount = request.POST.get('amount')
+
+        # Log the event
+        logger.info(f"📞 Voice Event - Phone: {phone_number}, Status: {status}, Duration: {duration}s, Active: {is_active}")
+        logger.info(f"   Session: {session_id}, Direction: {direction}, Cost: {currency_code} {amount}")
+
+        # You can store this in database for analytics/debugging
+        # For now, just log it
+
+        return HttpResponse(status=200)
+
+    except Exception as e:
+        logger.error(f"Error processing voice event: {str(e)}")
+        return HttpResponse(status=500)
