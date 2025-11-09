@@ -186,7 +186,7 @@ class AfricasTalkingProvider(CombinedProvider):
             # Build callback URL (without parameters - AT strips them anyway)
             callback_url = self.config.get(
                 'voice_callback_url',
-                'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
+                'https://api.almuadhin.com/communications/callbacks/africastalking/voice'
             )
 
             payload = {
@@ -284,7 +284,7 @@ class AfricasTalkingProvider(CombinedProvider):
             # Build callback URL (without parameters)
             callback_url = self.config.get(
                 'voice_callback_url',
-                'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
+                'https://api.almuadhin.com/communications/callbacks/africastalking/voice'
             )
 
             payload = {
