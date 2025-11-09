@@ -171,14 +171,14 @@ class AfricasTalkingProvider(CombinedProvider):
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
 
-            # Store audio URL in cache for callback to retrieve
-            # AT strips query params, so we use cache with phone number as key
-            from django.core.cache import cache
-            cache_key = f"at_voice_call_{formatted_number}"
-            cache.set(cache_key, {
-                'audio_url': audio_url,
-                'call_type': 'adhan_audio'
-            }, timeout=600)  # 10 minutes
+            # Store audio URL in database for callback to retrieve
+            # AT strips query params, so we use database with phone number as key
+            from communications.models import VoiceCallSession
+            VoiceCallSession.objects.create(
+                phone_number=formatted_number,
+                call_type='adhan_audio',
+                audio_url=audio_url
+            )
 
             # Build callback URL (without parameters - AT strips them anyway)
             callback_url = self.config.get(
@@ -195,8 +195,8 @@ class AfricasTalkingProvider(CombinedProvider):
 
             logger.info(f"🔔 Making AT voice call to {clean_number}:")
             logger.info(f"   Callback URL: {callback_url}")
-            logger.info(f"   Audio URL stored in cache: {audio_url}")
-            logger.info(f"   Cache key: {cache_key}")
+            logger.info(f"   Audio URL stored in DB: {audio_url}")
+            logger.info(f"   Phone number: {formatted_number}")
 
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
 
@@ -267,13 +267,13 @@ class AfricasTalkingProvider(CombinedProvider):
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
 
-            # Store TTS message in cache for callback to retrieve
-            from django.core.cache import cache
-            cache_key = f"at_voice_call_{formatted_number}"
-            cache.set(cache_key, {
-                'message': text_message,
-                'call_type': 'tts'
-            }, timeout=600)  # 10 minutes
+            # Store TTS message in database for callback to retrieve
+            from communications.models import VoiceCallSession
+            VoiceCallSession.objects.create(
+                phone_number=formatted_number,
+                call_type='tts',
+                message=text_message
+            )
 
             # Build callback URL (without parameters)
             callback_url = self.config.get(

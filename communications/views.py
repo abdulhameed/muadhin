@@ -264,7 +264,8 @@ def africas_talking_voice_callback(request):
     Callback endpoint for Africa's Talking voice calls
     This serves the TTS/Audio XML response
     """
-    from django.core.cache import cache
+    from communications.models import VoiceCallSession
+    from django.utils import timezone
 
     # Log ALL parameters received
     logger.info(f"🔔 VOICE CALLBACK TRIGGERED!")
@@ -277,48 +278,57 @@ def africas_talking_voice_callback(request):
 
     logger.info(f"   Session: {session_id}, Phone: {phone_number}")
 
-    # Retrieve call data from cache using phone number
-    cache_key = f"at_voice_call_{phone_number}"
-    call_data = cache.get(cache_key)
+    # Retrieve call data from database using phone number
+    try:
+        call_session = VoiceCallSession.objects.filter(
+            phone_number=phone_number,
+            retrieved_at__isnull=True
+        ).order_by('-created_at').first()
 
-    logger.info(f"   Cache key: {cache_key}")
-    logger.info(f"   Cache data: {call_data}")
+        if call_session:
+            logger.info(f"   ✅ Found DB session: {call_session.call_type}")
 
-    if call_data:
-        call_type = call_data.get('call_type')
-
-        if call_type == 'adhan_audio':
-            # Serve audio Adhan
-            audio_url = call_data.get('audio_url')
-            logger.info(f"   🕌 Playing adhan audio: {audio_url}")
-            xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+            if call_session.call_type == 'adhan_audio':
+                # Serve audio Adhan
+                audio_url = call_session.audio_url
+                logger.info(f"   🕌 Playing adhan audio: {audio_url}")
+                xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">Assalamu Alaikum. It is time for prayer.</Say>
             <Play url="{audio_url}"/>
             <Say voice="woman">May Allah accept your prayers.</Say>
         </Response>'''
 
-        elif call_type == 'tts':
-            # Serve TTS message
-            message = call_data.get('message', 'This is a message from Muadhin.')
-            xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+            elif call_session.call_type == 'tts':
+                # Serve TTS message
+                message = call_session.message or 'This is a message from Muadhin.'
+                xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">{message}</Say>
         </Response>'''
 
+            else:
+                # Unknown call type
+                xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Say voice="woman">This is a test call from Muadhin.</Say>
+        </Response>'''
+
+            # Mark as retrieved and save session ID
+            call_session.retrieved_at = timezone.now()
+            call_session.session_id = session_id
+            call_session.save()
+
         else:
-            # Unknown call type
+            # No session found - default response
+            logger.warning(f"   ⚠️ No DB session found for {phone_number}")
             xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">This is a test call from Muadhin.</Say>
         </Response>'''
 
-        # Clear cache after use
-        cache.delete(cache_key)
-
-    else:
-        # No cache data - default response
-        logger.warning(f"   ⚠️ No cache data found for {phone_number}")
+    except Exception as e:
+        logger.error(f"   ❌ Error retrieving session: {str(e)}")
         xml_response = f'''<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Say voice="woman">This is a test call from Muadhin.</Say>
