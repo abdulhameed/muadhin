@@ -170,23 +170,36 @@ class AfricasTalkingProvider(CombinedProvider):
             
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
-            
-            # Create TwiML-like response for audio playback
-            # Africa's Talking uses similar XML structure
-            call_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-            <Response>
-                <Play url="{audio_url}"/>
-                <Say voice="woman">Assalamu Alaikum. This is your Adhan call from Muadhin.</Say>
-            </Response>'''
-            
+
+            # Build callback URL that will serve the XML response with audio
+            # The callback endpoint will return XML with <Play url="..."/>
+            callback_base_url = self.config.get(
+                'voice_callback_url',
+                'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
+            )
+
+            # Add parameters to callback URL
+            from urllib.parse import urlencode
+            callback_params = {
+                'callType': 'adhan_audio',
+                'audioUrl': audio_url
+            }
+            callback_url = f"{callback_base_url}?{urlencode(callback_params)}"
+
             payload = {
                 'username': self.config['username'],
                 'to': clean_number,
                 'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX')),
-                'callbackUrl': call_xml  # In production, host this XML response
+                'callbackUrl': callback_url
             }
-            
+
+            logger.info(f"🔔 Making AT voice call to {clean_number}:")
+            logger.info(f"   Callback URL: {callback_url}")
+            logger.info(f"   Payload: {payload}")
+
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
+
+            logger.info(f"📥 AT Response: {response.status_code} - {response.text[:200]}")
             
             if response.status_code == 200 or response.status_code == 201:
                 result = response.json()
@@ -252,22 +265,26 @@ class AfricasTalkingProvider(CombinedProvider):
             
             # Remove + from phone number
             clean_number = formatted_number.replace('+', '')
-            
-            # Create XML response for TTS
-            # Sanitize text message for XML
-            safe_message = text_message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            
-            call_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-            <Response>
-                <Say voice="woman" language="en-US">{safe_message}</Say>
-                <Say voice="woman" language="en-US">Thank you for using Muadhin prayer reminder service.</Say>
-            </Response>'''
-            
+
+            # Build callback URL for text-to-speech
+            callback_base_url = self.config.get(
+                'voice_callback_url',
+                'https://api.almuadhin.com/communications/callbacks/africastalking/voice/'
+            )
+
+            # Add parameters to callback URL
+            from urllib.parse import urlencode
+            callback_params = {
+                'callType': 'default',
+                'message': text_message
+            }
+            callback_url = f"{callback_base_url}?{urlencode(callback_params)}"
+
             payload = {
                 'username': self.config['username'],
                 'to': clean_number,
                 'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX')),
-                'callbackUrl': call_xml  # In production, host this XML response
+                'callbackUrl': callback_url
             }
             
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
