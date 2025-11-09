@@ -183,21 +183,17 @@ class AfricasTalkingProvider(CombinedProvider):
                 audio_url=audio_url
             )
 
-            # Build callback URL (without parameters - AT strips them anyway)
-            callback_url = self.config.get(
-                'voice_callback_url',
-                'https://api.almuadhin.com/communications/callbacks/africastalking/voice'
-            )
+            # Don't send callbackUrl in API request - use dashboard setting instead
+            # Africa's Talking rejects custom callback URLs in API requests
 
             payload = {
                 'username': self.config['username'],
                 'to': clean_number,
-                'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX')),
-                'callbackUrl': callback_url
+                'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX'))
             }
 
             logger.info(f"🔔 Making AT voice call to {clean_number}:")
-            logger.info(f"   Callback URL: {callback_url}")
+            logger.info(f"   Using dashboard callback URL (not sent in API request)")
             logger.info(f"   Audio URL stored in DB: {audio_url}")
             logger.info(f"   Phone number: {formatted_number}")
 
@@ -281,17 +277,12 @@ class AfricasTalkingProvider(CombinedProvider):
                 message=text_message
             )
 
-            # Build callback URL (without parameters)
-            callback_url = self.config.get(
-                'voice_callback_url',
-                'https://api.almuadhin.com/communications/callbacks/africastalking/voice'
-            )
+            # Don't send callbackUrl in API request - use dashboard setting instead
 
             payload = {
                 'username': self.config['username'],
                 'to': clean_number,
-                'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX')),
-                'callbackUrl': callback_url
+                'from': self.config.get('caller_id', self.config.get('phone_number', '+254711XXXXXX'))
             }
             
             response = requests.post(api_url, headers=headers, data=payload, timeout=30)
