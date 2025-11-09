@@ -320,7 +320,7 @@ COMMUNICATION_PROVIDERS = {
         'debug_mode': False,  # Live mode - credentials are working
         
         # Voice callback configuration
-        'voice_callback_url': f"https://{os.getenv('DOMAIN', 'localhost:8000')}/api/communications/callbacks/africastalking/voice/",
+        'voice_callback_url': f"https://{os.getenv('DOMAIN', 'localhost:8000')}/api/communications/callbacks/africastalking/voice",
     },
     'nigeria': {
         'api_key': os.getenv('NIGERIA_SMS_API_KEY', ''),
