@@ -174,7 +174,10 @@ class AfricasTalkingProvider(CombinedProvider):
             # Store audio URL in database for callback to retrieve
             # AT strips query params, so we use database with phone number as key
             from communications.models import VoiceCallSession
-            VoiceCallSession.objects.create(
+            from asgiref.sync import sync_to_async
+
+            # Create session in sync context
+            await sync_to_async(VoiceCallSession.objects.create)(
                 phone_number=formatted_number,
                 call_type='adhan_audio',
                 audio_url=audio_url
@@ -269,7 +272,10 @@ class AfricasTalkingProvider(CombinedProvider):
 
             # Store TTS message in database for callback to retrieve
             from communications.models import VoiceCallSession
-            VoiceCallSession.objects.create(
+            from asgiref.sync import sync_to_async
+
+            # Create session in sync context
+            await sync_to_async(VoiceCallSession.objects.create)(
                 phone_number=formatted_number,
                 call_type='tts',
                 message=text_message
