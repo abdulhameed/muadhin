@@ -14,7 +14,7 @@ class CommunicationResult:
     error_message: Optional[str] = None
     provider_name: str = ""
     cost: Optional[float] = None
-    delivery_status: str = "unknown"
+    delivery_status: str = "unknown"  # pending, sent, delivered, failed, expired, rejected
     raw_response: Optional[Dict] = None
     
     def to_dict(self):

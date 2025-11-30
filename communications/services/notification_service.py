@@ -55,7 +55,7 @@ class NotificationService:
                 logger.warning(f"⚠️ Preferred provider {preferred_provider} not found or not SMS-capable")
         
         # Use existing country-based provider selection logic
-        providers = ProviderRegistry.get_providers_for_country(country_code)
+        providers = ProviderRegistry.get_providers_for_country(country_code, communication_type='sms')
         sms_providers = [p for p in providers if isinstance(p, SMSProvider)]
         
         if not sms_providers:
@@ -112,15 +112,15 @@ class NotificationService:
         country_raw = getattr(user, 'country', 'NG')
         country_code = get_country_code(country_raw)
         phone_number = getattr(user, 'phone_number', '')
-        
+
         if not phone_number:
             return CommunicationResult(
                 success=False,
                 error_message="No phone number provided",
                 provider_name="NotificationService"
             )
-        
-        providers = ProviderRegistry.get_providers_for_country(country_code)
+
+        providers = ProviderRegistry.get_providers_for_country(country_code, communication_type='call')
         call_providers = [p for p in providers if isinstance(p, CallProvider)]
         
         if not call_providers:
@@ -176,15 +176,15 @@ class NotificationService:
         country_raw = getattr(user, 'country', 'NG')
         country_code = get_country_code(country_raw)
         phone_number = getattr(user, 'phone_number', '')
-        
+
         if not phone_number:
             return CommunicationResult(
                 success=False,
                 error_message="No phone number provided",
                 provider_name="NotificationService"
             )
-        
-        providers = ProviderRegistry.get_providers_for_country(country_code)
+
+        providers = ProviderRegistry.get_providers_for_country(country_code, communication_type='call')
         call_providers = [p for p in providers if isinstance(p, CallProvider)]
         
         if not call_providers:
@@ -226,15 +226,15 @@ class NotificationService:
         country_raw = getattr(user, 'country', 'NG')
         country_code = get_country_code(country_raw)
         whatsapp_number = getattr(user, 'whatsapp_number', '') or getattr(user, 'phone_number', '')
-        
+
         if not whatsapp_number:
             return CommunicationResult(
                 success=False,
                 error_message="No WhatsApp number provided",
                 provider_name="NotificationService"
             )
-        
-        providers = ProviderRegistry.get_providers_for_country(country_code)
+
+        providers = ProviderRegistry.get_providers_for_country(country_code, communication_type='whatsapp')
         whatsapp_providers = [p for p in providers if isinstance(p, WhatsAppProvider)]
         
         if not whatsapp_providers:

@@ -369,3 +369,74 @@ def africas_talking_voice_events(request):
     except Exception as e:
         logger.error(f"Error processing voice event: {str(e)}")
         return HttpResponse(status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def termii_delivery_callback(request):
+    """
+    Callback endpoint for Termii delivery reports
+    Receives delivery status updates from Termii
+    """
+    try:
+        import json
+
+        # Termii sends delivery reports as JSON
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST.dict()
+
+        # Termii delivery report parameters
+        message_id = data.get('message_id') or data.get('messageId')
+        status = data.get('status')  # 'DELIVERED', 'FAILED', 'EXPIRED', 'REJECTED', etc.
+        phone_number = data.get('phone_number') or data.get('to')
+        delivery_time = data.get('delivery_time')
+
+        logger.info(f"📬 Termii Delivery Report - Message ID: {message_id}, Status: {status}, Phone: {phone_number}")
+        logger.info(f"   Full data: {data}")
+
+        # Update CommunicationLog with delivery status
+        if message_id:
+            from communications.models import CommunicationLog
+            from django.utils.dateparse import parse_datetime
+
+            # Find the log entry
+            try:
+                log = CommunicationLog.objects.filter(message_id=message_id).first()
+
+                if log:
+                    # Map Termii status to our status choices
+                    status_mapping = {
+                        'DELIVERED': 'delivered',
+                        'SENT': 'sent',
+                        'FAILED': 'failed',
+                        'EXPIRED': 'expired',
+                        'REJECTED': 'rejected',
+                    }
+
+                    log.delivery_status = status_mapping.get(status.upper(), 'unknown')
+
+                    # Parse and store delivery time
+                    if delivery_time:
+                        try:
+                            log.delivered_at = parse_datetime(delivery_time)
+                        except:
+                            log.delivered_at = timezone.now()
+                    elif log.delivery_status == 'delivered':
+                        log.delivered_at = timezone.now()
+
+                    log.save()
+
+                    logger.info(f"   ✅ Updated CommunicationLog for message {message_id}: {log.delivery_status}")
+                else:
+                    logger.warning(f"   ⚠️ No CommunicationLog found for message ID: {message_id}")
+
+            except Exception as e:
+                logger.error(f"   ❌ Error updating CommunicationLog: {str(e)}")
+
+        return HttpResponse(status=200)
+
+    except Exception as e:
+        logger.error(f"Error processing Termii delivery report: {str(e)}")
+        return HttpResponse(status=500)

@@ -138,16 +138,30 @@ class ProviderRegistry:
         return cls._providers.get(provider_name)
     
     @classmethod
-    def get_providers_for_country(cls, country_code: str) -> List[BaseProvider]:
-        """Get ordered list of providers for a country (best first)"""
+    def get_providers_for_country(cls, country_code: str, communication_type: str = 'sms') -> List[BaseProvider]:
+        """
+        Get ordered list of providers for a country (best first)
+
+        Args:
+            country_code: ISO 2-letter country code
+            communication_type: Type of communication ('sms', 'call', 'whatsapp')
+
+        Returns:
+            List of providers in priority order
+        """
         if not cls._initialized:
             cls.initialize()
-        
-        provider_names = cls._country_preferences.get(
-            country_code.upper(),
-            ['africastalking']  # Default to Africa's Talking
-        )
-        
+
+        # First, try to get preferences from database
+        provider_names = cls._get_db_provider_preference(country_code, communication_type)
+
+        # If no database preference, fall back to hardcoded settings
+        if not provider_names:
+            provider_names = cls._country_preferences.get(
+                country_code.upper(),
+                ['africastalking']  # Default to Africa's Talking
+            )
+
         providers = []
         for name in provider_names:
             provider = cls._providers.get(name)
@@ -161,6 +175,35 @@ class ProviderRegistry:
                 providers.append(at_provider)
 
         return providers
+
+    @classmethod
+    def _get_db_provider_preference(cls, country_code: str, communication_type: str) -> List[str]:
+        """
+        Get provider preference from database
+
+        Returns:
+            List of provider names in priority order, or empty list if not found
+        """
+        try:
+            from communications.models import CountryProviderPreference
+
+            preference = CountryProviderPreference.objects.filter(
+                country_code=country_code.upper(),
+                communication_type=communication_type,
+                is_active=True
+            ).first()
+
+            if preference:
+                provider_names = preference.get_provider_names()
+                if provider_names:
+                    logger.info(f"📋 Using database preference for {country_code}/{communication_type}: {provider_names}")
+                    return provider_names
+
+        except Exception as e:
+            # Database might not be set up yet or model doesn't exist
+            logger.debug(f"Could not load database preferences: {e}")
+
+        return []
     
     @classmethod
     def get_all_providers(cls) -> Dict[str, BaseProvider]:

@@ -4,7 +4,8 @@ from .views import (
     AdminProviderAnalyticsAPIView,
     TestNotificationAPIView,
     africas_talking_voice_callback,
-    africas_talking_voice_events
+    africas_talking_voice_events,
+    termii_delivery_callback
     )
 
 urlpatterns = [
@@ -14,5 +15,7 @@ urlpatterns = [
     # Africa's Talking voice callbacks
     path('callbacks/africastalking/voice/', africas_talking_voice_callback, name='at-voice-callback'),
     path('callbacks/africastalking/voice/events/', africas_talking_voice_events, name='at-voice-events'),
+    # Termii delivery reports callback
+    path('callbacks/termii/delivery/', termii_delivery_callback, name='termii-delivery-callback'),
 
 ]

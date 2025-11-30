@@ -323,9 +323,10 @@ COMMUNICATION_PROVIDERS = {
         'voice_callback_url': f"https://{os.getenv('DOMAIN', 'localhost:8000')}/api/communications/callbacks/africastalking/voice",
     },
     'nigeria': {
-        'api_key': os.getenv('NIGERIA_SMS_API_KEY', ''),
-        'sender_id': os.getenv('NIGERIA_SMS_SENDER_ID', 'Muadhin'),
-        'api_url': os.getenv('NIGERIA_SMS_API_URL', 'https://api.termii.com/api/sms/send'),
+        'api_key': os.getenv('TERMII_API_KEY', ''),  # Updated to use TERMII_API_KEY
+        'sender_id': os.getenv('TERMII_SENDER_ID', 'Muadhin'),
+        'api_url': os.getenv('TERMII_API_URL', 'https://api.termii.com/api/sms/send'),
+        'channel': os.getenv('TERMII_CHANNEL', 'generic'),
         'debug_mode': DEBUG,
     },
     'india': {

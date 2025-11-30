@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ProviderConfiguration, CommunicationLog, ProviderStatus
+from .models import ProviderConfiguration, CommunicationLog, ProviderStatus, CountryProviderPreference
 
 
 @admin.register(ProviderConfiguration)
@@ -19,10 +19,10 @@ class ProviderConfigurationAdmin(admin.ModelAdmin):
 
 @admin.register(CommunicationLog)
 class CommunicationLogAdmin(admin.ModelAdmin):
-    list_display = ('created_at', 'user', 'communication_type', 'provider_name', 'success', 'prayer_name', 'cost')
-    list_filter = ('communication_type', 'provider_name', 'success', 'prayer_name', 'created_at')
+    list_display = ('created_at', 'user', 'communication_type', 'provider_name', 'success', 'delivery_status', 'prayer_name', 'cost')
+    list_filter = ('communication_type', 'provider_name', 'success', 'delivery_status', 'prayer_name', 'created_at')
     search_fields = ('user__username', 'user__email', 'provider_name', 'message_id')
-    readonly_fields = ('created_at', 'raw_response')
+    readonly_fields = ('created_at', 'delivered_at', 'raw_response')
     ordering = ('-created_at',)
     
     def has_add_permission(self, request):
@@ -46,3 +46,38 @@ class ProviderStatusAdmin(admin.ModelAdmin):
     
     def has_add_permission(self, request):
         return False  # Status records are created automatically
+
+
+@admin.register(CountryProviderPreference)
+class CountryProviderPreferenceAdmin(admin.ModelAdmin):
+    list_display = ('country_code', 'communication_type', 'provider_priority_display', 'is_active', 'updated_at')
+    list_filter = ('communication_type', 'is_active', 'country_code')
+    search_fields = ('country_code', 'notes')
+    ordering = ('country_code', 'communication_type')
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('country_code', 'communication_type', 'is_active')
+        }),
+        ('Provider Configuration', {
+            'fields': ('provider_priority',),
+            'description': 'Enter provider names in priority order as a JSON array. Example: ["nigeria", "africastalking"] means try Nigeria provider first, then Africa\'s Talking.'
+        }),
+        ('Notes', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    readonly_fields = ('created_at', 'updated_at')
+
+    def provider_priority_display(self, obj):
+        providers = obj.get_provider_names()
+        if providers:
+            return ' → '.join(providers)
+        return 'No providers configured'
+    provider_priority_display.short_description = 'Provider Priority'

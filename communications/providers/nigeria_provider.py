@@ -1,7 +1,8 @@
 from .base import CombinedProvider, CommunicationResult
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 import requests
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -28,53 +29,95 @@ class NigeriaProvider(CombinedProvider):
         }
         return cost_map.get(country_code.upper(), 0.02)
     
-    async def send_sms(self, to_number: str, message: str, country_code: str = None) -> CommunicationResult:
-        """Send SMS via Nigerian provider (e.g., Termii, BulkSMS Nigeria)"""
+    async def send_sms(self, to_number: str, message: str, country_code: str = None,
+                      use_template: bool = False, template_id: str = None) -> CommunicationResult:
+        """
+        Send SMS via Termii (Nigerian provider)
+
+        Args:
+            to_number: Recipient phone number
+            message: Message content
+            country_code: Country code (default: NG)
+            use_template: Whether to use a pre-approved template
+            template_id: Template ID if using templates
+        """
         try:
             formatted_number = self.format_phone_number(to_number, country_code or 'NG')
-            
+
             # For development/testing
             if self.config.get('debug_mode', False):
-                logger.info(f"[NIGERIA DEBUG] SMS to {formatted_number}: {message}")
+                logger.info(f"[TERMII DEBUG] SMS to {formatted_number}: {message}")
                 return CommunicationResult(
                     success=True,
-                    message_id=f"nigeria_debug_{hash(formatted_number)}",
-                    provider_name="NigeriaProvider",
-                    cost=self.get_cost_per_message(country_code or 'NG')
-                )
-            
-            # Example API call to a Nigerian SMS service
-            api_url = self.config.get('api_url', 'https://api.termii.com/api/sms/send')
-            
-            payload = {
-                "to": formatted_number.replace('+', ''),
-                "from": self.config.get('sender_id', 'Muadhin'),
-                "sms": message,
-                "type": "plain",
-                "api_key": self.config['api_key'],
-                "channel": "generic"
-            }
-            
-            response = requests.post(api_url, json=payload, timeout=30)
-            
-            if response.status_code == 200:
-                result = response.json()
-                return CommunicationResult(
-                    success=True,
-                    message_id=result.get('message_id', str(hash(formatted_number))),
+                    message_id=f"termii_debug_{hash(formatted_number)}",
                     provider_name="NigeriaProvider",
                     cost=self.get_cost_per_message(country_code or 'NG'),
+                    delivery_status='sent'
+                )
+
+            # Build callback URL for delivery reports
+            domain = getattr(settings, 'DOMAIN', 'localhost:8000')
+            callback_url = f"https://{domain}/api/communications/callbacks/termii/delivery"
+
+            # Termii API endpoint
+            api_url = self.config.get('api_url', 'https://api.termii.com/api/sms/send')
+
+            # Build request payload based on whether using templates
+            if use_template and template_id:
+                # Use template endpoint
+                api_url = 'https://api.termii.com/api/send/template'
+                payload = {
+                    "api_key": self.config['api_key'],
+                    "phone_number": formatted_number.replace('+', ''),
+                    "device_id": self.config.get('device_id', ''),
+                    "template_id": template_id,
+                }
+            else:
+                # Standard SMS endpoint with delivery report callback
+                payload = {
+                    "to": formatted_number.replace('+', ''),
+                    "from": self.config.get('sender_id', 'Muadhin'),
+                    "sms": message,
+                    "type": "plain",
+                    "api_key": self.config['api_key'],
+                    "channel": self.config.get('channel', 'generic'),
+                    "callback_url": callback_url  # Enable delivery reports
+                }
+
+            # Send request to Termii
+            logger.info(f"📤 Sending SMS via Termii to {formatted_number[:8]}***")
+            response = requests.post(api_url, json=payload, timeout=30)
+
+            if response.status_code == 200:
+                result = response.json()
+
+                # Parse Termii response
+                # Termii typically returns: {"message_id": "...", "message": "Successfully Sent", "balance": ...}
+                message_id = result.get('message_id') or result.get('messageId')
+                balance = result.get('balance')
+
+                logger.info(f"✅ Termii SMS sent successfully. Message ID: {message_id}, Balance: {balance}")
+
+                return CommunicationResult(
+                    success=True,
+                    message_id=message_id,
+                    provider_name="NigeriaProvider",
+                    cost=self.get_cost_per_message(country_code or 'NG'),
+                    delivery_status='sent',  # Initial status is 'sent', will be updated via callback
                     raw_response=result
                 )
             else:
-                raise Exception(f"API returned {response.status_code}: {response.text}")
-                
+                error_msg = f"Termii API returned {response.status_code}: {response.text}"
+                logger.error(f"❌ {error_msg}")
+                raise Exception(error_msg)
+
         except Exception as e:
-            logger.error(f"Nigeria SMS failed: {str(e)}")
+            logger.error(f"❌ Termii SMS failed: {str(e)}")
             return CommunicationResult(
                 success=False,
                 error_message=str(e),
-                provider_name="NigeriaProvider"
+                provider_name="NigeriaProvider",
+                delivery_status='failed'
             )
     
     async def make_call(self, to_number: str, audio_url: str, country_code: str = None) -> CommunicationResult:

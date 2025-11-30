@@ -72,7 +72,25 @@ class CommunicationLog(models.Model):
     response_time_ms = models.IntegerField(null=True, blank=True)
     country_code = models.CharField(max_length=2, null=True, blank=True)
     raw_response = models.JSONField(null=True, blank=True)
-    
+
+    # Delivery status (for providers that support delivery reports)
+    DELIVERY_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('delivered', 'Delivered'),
+        ('failed', 'Failed'),
+        ('expired', 'Expired'),
+        ('rejected', 'Rejected'),
+        ('unknown', 'Unknown'),
+    ]
+    delivery_status = models.CharField(
+        max_length=20,
+        choices=DELIVERY_STATUS_CHOICES,
+        default='unknown',
+        help_text="Delivery status from provider"
+    )
+    delivered_at = models.DateTimeField(null=True, blank=True, help_text="When message was delivered")
+
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -199,3 +217,43 @@ class VoiceCallSession(models.Model):
         from datetime import timedelta
         cutoff = timezone.now() - timedelta(hours=1)
         cls.objects.filter(created_at__lt=cutoff).delete()
+
+
+class CountryProviderPreference(models.Model):
+    """Configure provider priorities per country and communication type"""
+
+    COMMUNICATION_TYPES = [
+        ('sms', 'SMS'),
+        ('call', 'Voice Call'),
+        ('whatsapp', 'WhatsApp'),
+    ]
+
+    country_code = models.CharField(max_length=2, help_text="ISO 2-letter country code (e.g., NG, US)")
+    communication_type = models.CharField(max_length=20, choices=COMMUNICATION_TYPES)
+
+    # Provider priority list (stored as JSON array of provider names in order)
+    # Example: ["nigeria", "africastalking"] means try nigeria first, then africastalking
+    provider_priority = models.JSONField(
+        default=list,
+        help_text="List of provider names in priority order (first = highest priority)"
+    )
+
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, help_text="Admin notes about this configuration")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['country_code', 'communication_type']
+        ordering = ['country_code', 'communication_type']
+        verbose_name = 'Country Provider Preference'
+        verbose_name_plural = 'Country Provider Preferences'
+
+    def __str__(self):
+        providers = ', '.join(self.provider_priority) if self.provider_priority else 'None'
+        return f"{self.country_code} - {self.communication_type}: [{providers}]"
+
+    def get_provider_names(self):
+        """Get list of provider names in priority order"""
+        return self.provider_priority if isinstance(self.provider_priority, list) else []
